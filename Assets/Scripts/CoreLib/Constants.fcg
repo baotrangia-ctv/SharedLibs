@@ -1,0 +1,12 @@
+import "StdLibrary.fcc" as StdLib
+import "EditorGenLib.fcc" as EditorLib
+
+static graph Constants {
+    NO_ERROR int = 100
+    ERROR_NOT_REGISTERED int = 101
+    ERROR_RATE_LIMIT int = 102
+
+    ERROR_DB_READ_FAILED int = 201
+    ERROR_DB_WRITE_FAILED int = 202
+    ERROR_INVALID_DATA int = 203
+}
