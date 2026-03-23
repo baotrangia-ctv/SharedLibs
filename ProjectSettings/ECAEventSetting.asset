@@ -1,0 +1,81 @@
+{
+  "_tag": {
+    "type": "ecaEventDesc"
+  },
+  "_entityId": "sOWAgy2P",
+  "customEventDefines": {
+    "signal_33310432": {
+      "name": "OnDatabaseLoad",
+      "eventType": 0,
+      "enitityType": "Entity",
+      "typeID": 100002,
+      "props": [
+        {
+          "name": "playerUID",
+          "value": "UUID",
+          "key": 1
+        },
+        {
+          "name": "databaseType",
+          "value": "String",
+          "key": 2
+        }
+      ],
+      "propCount": 2,
+      "apiTargetV2": "both",
+      "version": 45,
+      "key": "signal_33310432"
+    },
+    "signal_47654996": {
+      "name": "OnDatabaseReady",
+      "eventType": 0,
+      "enitityType": "Entity",
+      "typeID": 100001,
+      "props": [
+        {
+          "name": "playerUID",
+          "value": "UUID",
+          "key": 1
+        },
+        {
+          "name": "databaseType",
+          "value": "String",
+          "key": 2
+        }
+      ],
+      "propCount": 2,
+      "apiTargetV2": "both",
+      "version": 45,
+      "key": "signal_47654996"
+    },
+    "signal_90555852": {
+      "name": "OnDatabaseSave",
+      "eventType": 0,
+      "enitityType": "Entity",
+      "typeID": 100000,
+      "props": [
+        {
+          "name": "playerUID",
+          "value": "UUID",
+          "key": 1
+        },
+        {
+          "name": "databaseType",
+          "value": "String",
+          "key": 2
+        }
+      ],
+      "propCount": 2,
+      "apiTargetV2": "both",
+      "version": 45,
+      "key": "signal_90555852"
+    }
+  },
+  "customName": {
+    "OnDatabaseLoad": "signal_33310432",
+    "OnDatabaseReady": "signal_47654996",
+    "OnDatabaseSave": "signal_90555852"
+  },
+  "children": []
+}
+//"{FE:{"v":"1.16.4231768","c":{"FF":5001},"s":100}
