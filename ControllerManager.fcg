@@ -1,0 +1,63 @@
+import "StdLibrary.fcc" as std
+import "Map.fcc" as Map
+import "List.fcc" as List
+import "Time.fcc" as Time
+import "./Constants.fcg" as Constants
+import "Player.fcc" as Player
+import "./ActionController.fcg" as ActionController
+import "./DatabaseController.fcg" as DatabaseController
+
+static graph ControllerManager {
+    RATE_LIMIT_MS int = 100
+
+    _LastReceivedPacket int = 0
+    
+    // Process an action with validation
+    func ProcessAction(playerUID UUID, actionType int, data List<object>, out var statusCode int) {
+        LogInfo("[ControllerManager] ProcessAction(" + playerUID + ", " + actionType + ", " + data + ")")
+        
+        // Check if action is registered
+        if !ActionController.IsActionRegistered(actionType) {
+            LogInfo("[ControllerManager][ProcessAction] Action not registered: " + actionType)
+
+            statusCode = Constants.ERROR_NOT_REGISTERED
+            return
+        }
+        
+        // Check if all databases are ready
+        if !DatabaseController.AreAllDatabasesReady(playerUID) {
+            LogInfo("[ControllerManager][ProcessAction] Databases not ready")
+
+            statusCode = Constants.ERROR_DB_READ_FAILED
+            return
+        }
+        
+        // Check rate limit
+        if IsRateLimited() {
+            LogInfo("[ControllerManager][ProcessAction] Rate limited")
+
+            statusCode = Constants.ERROR_RATE_LIMIT
+            return
+        }
+        
+        // Update last packet time
+        _LastReceivedPacket = GetServerTimestamp()
+        
+        // Dispatch begin action event
+        // DispatchEvent(Constants.OnBeginAction, globalEntity, List<object>{actionType, data})
+        
+        LogInfo("[ControllerManager] Processing action: " + actionType)
+        statusCode = Constants.NO_ERROR
+        return
+    }
+    
+    func IsRateLimited() bool {
+        LogInfo("[ControllerManager][Validation] Checking if rate limited")
+
+        var currentTime int = GetServerTimestamp()
+        if currentTime - _LastReceivedPacket < RATE_LIMIT_MS {
+            return true
+        }
+        return false
+    }
+}
