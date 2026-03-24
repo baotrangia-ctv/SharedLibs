@@ -1,9 +1,14 @@
+import "Map.fcc" as Map
+import "Player.fcc" as Player
+import "Database.fcc" as Database
 import "StdLibrary.fcc" as StdLib
 import "EditorGenLib.fcc" as EditorLib
-import "Player.fcc" as Player
-import "Map.fcc" as Map
 
 static graph DatabaseController {
+    MAX_LOOP_READ_DATA = 5
+    WAIT_TIME_DATA_STORAGE_TIMEOUT = 1000
+    WAIT_TIME_DATA_STORAGE_LIMIT_EXCEEDED = 10000
+
     _RegisteredDBs Map<string, bool> = Map<string, bool>{}
     _DBReadyStatus Map<UUID, Map<string, bool>> = Map<UUID, Map<string, bool>>{}
 
@@ -19,6 +24,12 @@ static graph DatabaseController {
         LogInfo("[DatabaseController] Event OnDatabaseReady(" + playerUID + ", " + dbType + ")")
 
         SetDatabaseReady(playerUID, dbType, true)
+    }
+
+    func RegisterDatabase(dbType string) {
+        LogInfo("[DatabaseController] RegisterDatabase(" + dbType + ")")
+
+        _RegisteredDBs[dbType] = true
     }
 
     func LoadAllDatabases(playerUID UUID) {
@@ -37,6 +48,67 @@ static graph DatabaseController {
         }
     }
 
+    async func RetryLoadData(sheetName string, playerUID UUID, key string, out var result object, mapCode string, out var statusCode StatusCode) {
+        var loopCount int = MAX_LOOP_READ_DATA
+        statusCode = StatusCode.DataStorageTimeout
+
+        while statusCode != StatusCode.NoError && loopCount > 0 {
+            wait ReadFromDataStoreSteady(
+                sheetName,
+                playerUID,
+                key,
+                out var readResult,
+                mapCode,
+                out var readStatusCode,
+            )
+
+            statusCode = readStatusCode
+            result = readResult
+
+            if statusCode == StatusCode.NoError {
+                break
+            } else if statusCode == StatusCode.DataStorageTimeout {
+                WaitForMillisecond(WAIT_TIME_DATA_STORAGE_TIMEOUT)
+            } else if statusCode == StatusCode.DataStorageLimitExceeded {
+                WaitForMillisecond(WAIT_TIME_DATA_STORAGE_LIMIT_EXCEEDED)
+            } else {}
+
+            loopCount -= 1
+        }
+    }
+
+    func SetDatabaseReady(playerUID UUID, dbType string, isReady bool) {
+        LogInfo("[DatabaseController] SetDatabaseReady(" + playerUID + ", " + dbType + ", " + isReady + ")")
+
+        if !Map.ContainKey(_DBReadyStatus, playerUID) {
+            _DBReadyStatus[playerUID] = Map<string, bool>{}
+        }
+
+        _DBReadyStatus[playerUID][dbType] = isReady
+    }
+
+    func IsDatabaseReady(playerUID UUID, dbType string) bool {
+        LogInfo("[DatabaseController] IsDatabaseReady(" + playerUID + ", " + dbType + ")")
+
+        if Map.ContainKey(_RegisteredDBs, dbType) {
+            return _DBReadyStatus[playerUID][dbType]
+        }
+        return false
+    }
+
+    func AreAllDatabasesReady(playerUID UUID) bool {
+        LogInfo("[DatabaseController] AreAllDatabasesReady(" + playerUID + ")")
+
+        for key, isRegistered in _RegisteredDBs {
+            if isRegistered {
+                if !IsDatabaseReady(playerUID, key) {
+                    return false
+                }
+            }
+        }
+        return true
+    }
+
     func SaveAllDatabases(playerUID UUID) {
         LogInfo("[DatabaseController] SaveAllDatabases(" + playerUID + ")")
 
@@ -52,43 +124,5 @@ static graph DatabaseController {
                 LogInfo("[DatabaseController] SaveAllDatabases(" + playerUID + ", " + dbType + "): isRegistered = " + isRegistered + ", isReady = " + IsDatabaseReady(playerUID, dbType))
             }
         }
-    }
-    
-    func RegisterDatabase(dbType string) {
-        LogInfo("[DatabaseController] RegisterDatabase(" + dbType + ")")
-
-        _RegisteredDBs[dbType] = true
-    }
-    
-    func SetDatabaseReady(playerUID UUID, dbType string, isReady bool) {
-        LogInfo("[DatabaseController] SetDatabaseReady(" + playerUID + ", " + dbType + ", " + isReady + ")")
-        
-        if !Map.ContainKey(_DBReadyStatus, playerUID) {
-            _DBReadyStatus[playerUID] = Map<string, bool>{}
-        }
-
-        _DBReadyStatus[playerUID][dbType] = isReady
-    }
-    
-    func IsDatabaseReady(playerUID UUID, dbType string) bool {
-        LogInfo("[DatabaseController] IsDatabaseReady(" + playerUID + ", " + dbType + ")")
-
-        if Map.ContainKey(_RegisteredDBs, dbType) {
-            return _DBReadyStatus[playerUID][dbType]
-        }
-        return false
-    }
-    
-    func AreAllDatabasesReady(playerUID UUID) bool {
-        LogInfo("[DatabaseController] AreAllDatabasesReady(" + playerUID + ")")
-        
-        for key, isRegistered in _RegisteredDBs {
-            if isRegistered {
-                if !IsDatabaseReady(playerUID, key) {
-                    return false
-                }
-            }
-        }
-        return true
     }
 }
