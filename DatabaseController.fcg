@@ -11,25 +11,24 @@ static graph DatabaseController {
 
     _RegisteredDBs Map<string, bool> = Map<string, bool>{}
     _DBReadyStatus Map<UUID, Map<string, bool>> = Map<UUID, Map<string, bool>>{}
+    _DBSavedStatus Map<UUID, Map<string, bool>> = Map<UUID, Map<string, bool>>{}
 
-    event OnPlayerJoin(player entity<Player>) {
-        LoadAllDatabases(player<Player>.UserUID)
-    }
-
-    event OnUserQuitOrUserMatchEnd(player entity<Player>) {
-        SaveAllDatabases(player<Player>.UserUID)
-    }
-
-    event OnDatabaseReady(playerUID UUID, dbType string) {
-        LogInfo("[DatabaseController] Event OnDatabaseReady(" + playerUID + ", " + dbType + ")")
-
-        SetDatabaseReady(playerUID, dbType, true)
-    }
+    // ==========================
+    // Database Registration
+    // ==========================
 
     func RegisterDatabase(dbType string) {
         LogInfo("[DatabaseController] RegisterDatabase(" + dbType + ")")
 
         _RegisteredDBs[dbType] = true
+    }
+
+    // ==========================
+    // Database Loading
+    // ==========================
+
+    event OnPlayerJoin(player entity<Player>) {
+        LoadAllDatabases(player<Player>.UserUID)
     }
 
     func LoadAllDatabases(playerUID UUID) {
@@ -109,6 +108,14 @@ static graph DatabaseController {
         return true
     }
 
+    // ==========================
+    // Database Saving
+    // ==========================
+
+    event OnUserQuitOrUserMatchEnd(player entity<Player>) {
+        SaveAllDatabases(player<Player>.UserUID)
+    }
+
     func SaveAllDatabases(playerUID UUID) {
         LogInfo("[DatabaseController] SaveAllDatabases(" + playerUID + ")")
 
@@ -124,5 +131,37 @@ static graph DatabaseController {
                 LogInfo("[DatabaseController] SaveAllDatabases(" + playerUID + ", " + dbType + "): isRegistered = " + isRegistered + ", isReady = " + IsDatabaseReady(playerUID, dbType))
             }
         }
+    }
+
+    func SetDatabaseSaved(playerUID UUID, dbType string, isSaved bool) {
+        LogInfo("[DatabaseController] SetDatabaseSaved(" + playerUID + ", " + dbType + ", " + isSaved + ")")
+
+        if !Map.ContainKey(_DBReadyStatus, playerUID) {
+            _DBSavedStatus[playerUID] = Map<string, bool>{}
+        }
+
+        _DBSavedStatus[playerUID][dbType] = isSaved
+    }
+
+    func IsDatabaseSaved(playerUID UUID, dbType string) bool {
+        LogInfo("[DatabaseController] IsDatabaseSaved(" + playerUID + ", " + dbType + ")")
+
+        if Map.ContainKey(_RegisteredDBs, dbType) {
+            return _DBSavedStatus[playerUID][dbType]
+        }
+        return false
+    }
+
+    func AreAllDatabasesSaved(playerUID UUID) bool {
+        LogInfo("[DatabaseController] AreAllDatabasesSaved(" + playerUID + ")")
+
+        for key, isRegistered in _RegisteredDBs {
+            if isRegistered {
+                if !IsDatabaseSaved(playerUID, key) {
+                    return false
+                }
+            }
+        }
+        return true
     }
 }
