@@ -9,6 +9,7 @@ static graph DatabaseController {
     WAIT_TIME_DATA_STORAGE_TIMEOUT = 1000
     WAIT_TIME_DATA_STORAGE_LIMIT_EXCEEDED = 10000
 
+    _AllowSaveData Map<UUID, bool> = Map<UUID, bool>{}
     _RegisteredDBs Map<string, bool> = Map<string, bool>{}
     _DBReadyStatus Map<UUID, Map<string, bool>> = Map<UUID, Map<string, bool>>{}
     _DBSavedStatus Map<UUID, Map<string, bool>> = Map<UUID, Map<string, bool>>{}
@@ -28,7 +29,12 @@ static graph DatabaseController {
     // ==========================
 
     event OnPlayerJoin(player entity<Player>) {
-        LoadAllDatabases(player<Player>.UserUID)
+        var playerUID UUID = player<Player>.UserUID
+        _AllowSaveData[playerUID] = false
+
+        WaitForMillisecond(5000)
+
+        LoadAllDatabases(playerUID)
     }
 
     func LoadAllDatabases(playerUID UUID) {
@@ -92,6 +98,7 @@ static graph DatabaseController {
         if Map.ContainKey(_RegisteredDBs, dbType) {
             return _DBReadyStatus[playerUID][dbType]
         }
+
         return false
     }
 
@@ -108,6 +115,10 @@ static graph DatabaseController {
         return true
     }
 
+    func MarkAllowSaveData(playerUID UUID) {
+        _AllowSaveData[playerUID] = true
+    }
+
     // ==========================
     // Database Saving
     // ==========================
@@ -118,6 +129,11 @@ static graph DatabaseController {
 
     func SaveAllDatabases(playerUID UUID) {
         LogInfo("[DatabaseController] SaveAllDatabases(" + playerUID + ")")
+
+        if !_AllowSaveData[playerUID] {
+            LogInfo("[DatabaseController][SaveAllDatabases] " + playerUID + " not allow to save database!")
+            return
+        }
 
         for dbType, isRegistered in _RegisteredDBs {
             if isRegistered && IsDatabaseReady(playerUID, dbType) {
@@ -136,7 +152,7 @@ static graph DatabaseController {
     func SetDatabaseSaved(playerUID UUID, dbType string, isSaved bool) {
         LogInfo("[DatabaseController] SetDatabaseSaved(" + playerUID + ", " + dbType + ", " + isSaved + ")")
 
-        if !Map.ContainKey(_DBReadyStatus, playerUID) {
+        if !Map.ContainKey(_DBSavedStatus, playerUID) {
             _DBSavedStatus[playerUID] = Map<string, bool>{}
         }
 
@@ -155,9 +171,10 @@ static graph DatabaseController {
     func AreAllDatabasesSaved(playerUID UUID) bool {
         LogInfo("[DatabaseController] AreAllDatabasesSaved(" + playerUID + ")")
 
-        for key, isRegistered in _RegisteredDBs {
+        for dbType, isRegistered in _RegisteredDBs {
             if isRegistered {
-                if !IsDatabaseSaved(playerUID, key) {
+                if !IsDatabaseSaved(playerUID, dbType) {
+                    LogInfo("[DatabaseController] AreAllDatabasesSaved(" + playerUID + ", " + dbType + "): isRegistered = " + isRegistered + ", isSaved = " + IsDatabaseSaved(playerUID, dbType) + "!")
                     return false
                 }
             }
