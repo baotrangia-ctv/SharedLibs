@@ -2,21 +2,62 @@ import "Map.fcc" as Map
 import "StdLibrary.fcc" as StdLib
 import "EditorGenLib.fcc" as EditorLib
 
-static graph ActionController {
-    _RegisteredActions Map<int, bool> = Map<int, bool>{}
+import "./DatabaseController.fcg" as DatabaseController
 
-    func RegisterAction(actionType int) {
-        LogInfo("[ControllerManager][ActionRegistry] Registered action: " + actionType)
+static graph ActionController {
+    PROCESS_ACTION_COOLDOWN int = 1
+
+    _RegisteredActions Map<string, bool> = Map<string, bool>{}
+    _LastActionTimestamp Map<UUID, int> = Map<UUID, int>{}
+
+    // ==========================
+    // Action Registration
+    // ==========================
+
+    func RegisterAction(actionType string) {
+        LogInfo("[ControllerManager] Registered action: " + actionType)
 
         _RegisteredActions[actionType] = true
     }
 
-    func IsActionRegistered(actionType int) bool {
-        LogInfo("[ControllerManager][ActionRegistry] Checking if action is registered: " + actionType)
+    func IsActionRegistered(actionType string) bool {
+        LogInfo("[ControllerManager] Checking if action is registered: " + actionType)
 
         if Map.ContainKey(_RegisteredActions, actionType) {
             return _RegisteredActions[actionType]
         }
         return false
+    }
+
+    // ==========================
+    // Action Validation
+    // ==========================
+
+    func RequestAction(playerUID UUID, actionType string, payload Map<object, object>) {
+        LogInfo("[ControllerManager] RequestAction(playerUID: " + playerUID + ", actionType: " + actionType + ", payload: " + payload + ")")
+
+        if !IsActionRegistered(actionType) {
+            LogInfo("[ControllerManager][RequestAction] Action not registered: " + actionType)
+            return
+        }
+
+        if !DatabaseController.AreAllDatabasesReady(playerUID) {
+            LogInfo("[ControllerManager][RequestAction] Databases not ready: " + actionType)
+            return
+        }
+
+        if IsProcressSoFast(playerUID) {
+            LogInfo("[ControllerManager][RequestAction] Action is procress so fast: " + actionType)
+            return
+        }
+
+        _LastActionTimestamp[playerUID] = GetServerTimestamp()
+
+        LogInfo("[ControllerManager][RequestAction] Pass validation: " + actionType)
+        // DispatchEventToEntity(OnRequestAction, globalEntity, PlatformType.Server, List<object>{playerUID, actionType, payload})
+    }
+
+    func IsProcressSoFast(playerUID UUID) bool {
+        return GetServerTimestamp() - _LastActionTimestamp[playerUID] < PROCESS_ACTION_COOLDOWN
     }
 }
