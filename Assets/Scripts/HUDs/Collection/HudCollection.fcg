@@ -1,0 +1,344 @@
+import "Hud.fcc" as Hud
+import "List.fcc" as List
+import "StdLibrary.fcc" as StdLib
+import "EditorGenLib.fcc" as EditorLib
+import Res from "EditorGenLib.fcc"
+
+import "./ItemUtils.fcg" as ItemUtils
+import "../../Mockups/Configs.fcg" as Configs
+import "../../Managers/CollectionManager.fcg" as CollectionManager
+
+graph HudCollection {
+    ACTIVE_TAB_TOP = #222222
+    ACTIVE_TAB_BOTTOM = #666666
+    ACTIVE_TEXT_COLOR = #FFFFFF
+    DEFAULT_TAB_TOP = #AAAAAA
+    DEFAULT_TAB_BOTTOM = #CCCCCC
+    DEFAULT_TEXT_COLOR = #000000
+    ACTIVE_COLOR = #FFFFFF
+    DEFAULT_COLOR = #111111
+    MAX_ITEMS_PER_PAGE int = 6
+
+    _CurrentTabIndex int
+    _CurrentItemsLists List<List<int>>
+    _CurrentPageIndex int
+    _TotalPages int
+    _IsFirstTimeOpen bool
+    _CurrentItemIdDetails int
+    _CurrentItemWidgetIndex int
+
+    _CollectionHUD entity<CustomUI>
+    _CollectionWidget entity<UIWidget>
+    _TabsLayout entity<UIWidgetLayout>
+    _TabButtons List<entity<UIWidgetButton>>
+    _CurrentTabButton entity<UIWidgetButton>
+    _ItemDetailsWidget entity<UIWidget>
+    _ItemDescriptionLabel entity<UIWidgetLabel>
+    _ItemsLayout entity<UIWidget>
+    _PrevPageButton entity<UIWidgetButton>
+    _NextPageButton entity<UIWidgetButton>
+    _LoadingLabel entity<UIWidgetLabel>
+
+    event OnAwake() {
+        _CurrentTabIndex = -1
+        _CurrentPageIndex = 0
+        _CurrentItemsLists = List<List<int>>{}
+        _CurrentItemWidgetIndex = 0
+        _IsFirstTimeOpen = true
+
+        ShowCollectionHUD()
+        CloseCollection()
+    }
+
+    event OnOwnNewItem(player entity<Player>, itemId int, mutationId int) {
+        if player == thisEntity<Player> {
+            UpdateNewOwnItem(itemId)
+        }
+    }
+
+    func InitCollectionHUD() {
+        if _CollectionHUD != nil {
+            return
+        }
+
+        CreateCustomUI(out var collectionHud, thisEntity<Player>, EResUI.Collection)
+        _CollectionHUD = collectionHud
+
+        _CollectionWidget = GetWidgetFromCustomUI(thisEntity<Player>, _CollectionHUD, Res.Collection[EResKeyCollection.Collection]) as entity<UIWidget>
+
+        _TabsLayout = GetWidgetFromCustomUI(thisEntity<Player>, _CollectionHUD, Res.Collection[EResKeyCollection.TabsLayout]) as entity<UIWidgetLayout>
+        _TabButtons = GetChildren(_TabsLayout) as List<entity<UIWidgetButton>>
+
+        _ItemDetailsWidget = GetWidgetFromCustomUI(thisEntity<Player>, _CollectionHUD, Res.Collection[EResKeyCollection.ItemDetails]) as entity<UIWidget>
+        _ItemDescriptionLabel = GetWidgetFromCustomUI(thisEntity<Player>, _CollectionHUD, Res.Collection[EResKeyCollection.ItemDescription]) as entity<UIWidgetLabel>
+
+        _ItemsLayout = GetWidgetFromCustomUI(thisEntity<Player>, _CollectionHUD, Res.Collection[EResKeyCollection.ItemsLayout]) as entity<UIWidget>
+        _PrevPageButton = GetWidgetFromCustomUI(thisEntity<Player>, _CollectionHUD, Res.Collection[EResKeyCollection.PrevPageButton]) as entity<UIWidgetButton>
+        _NextPageButton = GetWidgetFromCustomUI(thisEntity<Player>, _CollectionHUD, Res.Collection[EResKeyCollection.NextPageButton]) as entity<UIWidgetButton>
+
+        _LoadingLabel = GetWidgetFromCustomUI(thisEntity<Player>, _CollectionHUD, Res.Collection[EResKeyCollection.LoadingLabel]) as entity<UIWidgetLabel>
+
+        HideCollectionHUD()
+    }
+
+    func ShowCollectionHUD() {
+        InitCollectionHUD()
+
+        _CollectionHUD<CustomUI>.IsVisible = true
+    }
+
+    func HideCollectionHUD() {
+        _CollectionHUD<CustomUI>.IsVisible = false
+    }
+
+    func OpenCollection() {
+        ShowCollectionHUD()
+
+        _CollectionWidget<UIWidget>.IsVisible = true
+
+        if _IsFirstTimeOpen {
+            _IsFirstTimeOpen = false
+            UpdateForFirstTimeOpen()
+        }
+    }
+
+    func CloseCollection() {
+        _CollectionWidget<UIWidget>.IsVisible = false
+    }
+
+    func SwitchTab(tabButton entity<UIWidgetButton>) {
+        if tabButton == _CurrentTabButton {
+            return
+        }
+
+        UpdateTabButton(_CurrentTabButton, true)
+
+        _CurrentTabButton = tabButton
+
+        UpdateTabButton(_CurrentTabButton, false)
+
+        var tabIndex int = List.IndexOf(_TabButtons, tabButton)
+        UpdateItemsLists(tabIndex)
+
+        SwitchPage(0)
+    }
+
+    func UpdateTabButton(tabButton entity<UIWidgetButton>, isDefault bool) {
+        if tabButton == nil {
+            return
+        }
+
+        if isDefault {
+            tabButton<UIWidgetButton>.GradientTop = DEFAULT_TAB_TOP
+            tabButton<UIWidgetButton>.GradientBottom = DEFAULT_TAB_BOTTOM
+
+            var tabContent entity<UIWidgetLabel> = GetChildByName(tabButton, "Content") as entity<UIWidgetLabel>
+            tabContent<UIWidgetLabel>.Color = DEFAULT_TEXT_COLOR
+        } else {
+            tabButton<UIWidgetButton>.GradientTop = ACTIVE_TAB_TOP
+            tabButton<UIWidgetButton>.GradientBottom = ACTIVE_TAB_BOTTOM
+
+            var tabContent entity<UIWidgetLabel> = GetChildByIndex(tabButton, 0) as entity<UIWidgetLabel>
+            tabContent<UIWidgetLabel>.Color = ACTIVE_TEXT_COLOR
+        }
+    }
+
+    func UpdateItemsLists(tabIndex int) {
+        _LoadingLabel<UIWidget>.IsVisible = false
+
+        if tabIndex == _CurrentTabIndex {
+            return
+        }
+
+        _CurrentTabIndex = tabIndex
+        _CurrentItemsLists = List<List<int>>{}
+
+        var items List<int> = Configs.GetItemsByTab(tabIndex)
+        for i = 0, List.Length(items), MAX_ITEMS_PER_PAGE {
+            var itemsList List<int> = List<int>{}
+            for j = i, i + MAX_ITEMS_PER_PAGE, 1 {
+                if j >= List.Length(items) {
+                    break
+                }
+
+                List.Append(itemsList, items[j])
+            }
+            List.Append(_CurrentItemsLists, itemsList)
+        }
+
+        _TotalPages = List.Length(_CurrentItemsLists)
+    }
+
+    func SwitchPrevPage() {
+        SwitchPage(_CurrentPageIndex - 1)
+    }
+
+    func SwitchNextPage() {
+        SwitchPage(_CurrentPageIndex + 1)
+    }
+
+    func SwitchPage(pageIndex int) {
+        if pageIndex < 0 || pageIndex >= _TotalPages {
+            return
+        }
+
+        _CurrentPageIndex = pageIndex
+
+        UpdateItemsLayout()
+        ResetItemsDetails()
+        UpdatePageBtns()
+        UpdateSelectedBorder(0)
+    }
+
+    func UpdateItemsLayout() {
+        ResetItemsLayout()
+
+        for key, itemId in _CurrentItemsLists[_CurrentPageIndex] {
+            var itemWidget entity<UIWidget> = GetChildByIndex(_ItemsLayout, key) as entity<UIWidget>
+            UpdateItemWidget(itemWidget, itemId)
+        }
+    }
+
+    func ResetItemsLayout() {
+        for key, itemWidget in GetChildren(_ItemsLayout) {
+            itemWidget<UIWidget>.IsVisible = false
+        }
+    }
+
+    func UpdateItemWidget(itemWidget entity<UIWidget>, itemId int) {
+        ItemUtils.UpdateItemWidget(thisEntity<Player>, itemWidget, itemId, 0, List<int>{}, true, true, false)
+
+        var mutationIcon entity<UIWidgetImage> = GetChildByName(itemWidget, "MutationIcon") as entity<UIWidgetImage>
+        var mutationsCountLabel entity<UIWidgetLabel> = GetChildByName(mutationIcon, "Count") as entity<UIWidgetLabel>
+
+        var ownedMutations List<int> = CollectionManager.GetOwnMutationIdsByPetId(thisEntity<Player>.UserUID, itemId)
+        var count int = List.Length(ownedMutations)
+        LogWarning("UpdateItemWidget: " + itemId + " - " + ownedMutations + " - " + count)
+
+        mutationIcon<UIWidget>.IsVisible = true
+        mutationsCountLabel<UIWidgetLabel>.Content = "" + count
+
+        itemWidget<UIWidget>.IsVisible = true
+    }
+
+    func ResetItemsDetails() {
+        var playerUID UUID = thisEntity<Player>.UserUID
+
+        var itemId int = _CurrentItemsLists[_CurrentPageIndex][0]
+        var isOwnedItem bool = CollectionManager.IsOwnItem(playerUID, itemId)
+        var ownedMutations List<int> = CollectionManager.GetOwnMutationIdsByPetId(playerUID, itemId)
+
+        UpdateItemsDetails(itemId, isOwnedItem, ownedMutations)
+    }
+
+    func UpdateItemsDetails(itemId int, isOwned bool, ownedMutations List<int>) {
+        _CurrentItemIdDetails = itemId
+
+        var itemWidget entity<UIWidget> = GetChildByName(_ItemDetailsWidget, "ItemWidget") as entity<UIWidget>
+        var itemInformation entity<UIWidget> = GetChildByName(_ItemDetailsWidget, "ItemInformation") as entity<UIWidget>
+        var itemDescription entity<UIWidgetLabel> = GetChildByName(itemInformation, "ItemDescription") as entity<UIWidgetLabel>
+        var ownedMutationsWidget entity<UIWidgetLayout> = GetChildByName(_ItemDetailsWidget, "OwnedMutations") as entity<UIWidgetLayout>
+
+        // Update item visual
+        ItemUtils.UpdateItemWidget(thisEntity<Player>, itemWidget, itemId, 0, List<int>{}, true, true, false)
+
+        // Update item info
+        itemInformation<UIWidget>.IsVisible = isOwned
+        itemDescription<UIWidgetLabel>.Content = "Description Item: " + Configs.GetItemName(itemId)
+
+        // Reset owned mutations
+        ownedMutationsWidget<UIWidget>.IsVisible = isOwned
+        var ownedMutationsLayout entity<UIWidgetLayout> = GetChildByName(ownedMutationsWidget, "OwnedMutationsLayout") as entity<UIWidgetLayout>
+        for key, mutationIcon in GetChildren(ownedMutationsLayout) {
+            mutationIcon<UIWidgetImage>.Color = DEFAULT_COLOR
+        }
+
+        // Update owned mutations
+        for key, mutationId in ownedMutations {
+            var mutationIcon entity<UIWidgetImage> = GetChildByIndex(ownedMutationsLayout, mutationId - CollectionManager.MUTATION_START_INDEX) as entity<UIWidgetImage>
+            mutationIcon<UIWidgetImage>.Color = ACTIVE_COLOR
+        }
+
+        _ItemDetailsWidget<UIWidget>.IsVisible = true
+    }
+
+    func UpdatePageBtns() {
+        if _CurrentPageIndex == 0 {
+            _PrevPageButton<UIWidget>.IsVisible = false
+        } else {
+            _PrevPageButton<UIWidget>.IsVisible = true
+        }
+
+        if _CurrentPageIndex == _TotalPages - 1 {
+            _NextPageButton<UIWidget>.IsVisible = false
+        } else {
+            _NextPageButton<UIWidget>.IsVisible = true
+        }
+    }
+
+    func UpdateSelectedBorder(itemWidgetIndex int) {
+        SetSelectedBorder(_CurrentItemWidgetIndex, false)
+        _CurrentItemWidgetIndex = itemWidgetIndex
+        SetSelectedBorder(_CurrentItemWidgetIndex, true)
+    }
+
+    func SetSelectedBorder(itemWidgetIndex int, isSelected bool) {
+        var itemWidget entity<UIWidget> = GetChildByIndex(_ItemsLayout, itemWidgetIndex) as entity<UIWidget>
+        var rarityBG entity<UIWidgetImage> = GetChildByName(itemWidget, "RarityBG") as entity<UIWidgetImage>
+        var selectedBorder entity<UIWidgetImage> = GetChildByName(rarityBG, "SelectedBorder") as entity<UIWidgetImage>
+
+        LogWarning(itemWidget<Entity>.Name)
+
+        selectedBorder<UIWidget>.IsVisible = isSelected
+    }
+
+    func UpdateForFirstTimeOpen() {
+        _LoadingLabel<UIWidget>.IsVisible = false
+
+        SwitchTab(_TabButtons[0])
+
+        for key, itemId in _CurrentItemsLists[_CurrentPageIndex] {
+            if !CollectionManager.IsOwnItem(thisEntity<Player>.UserUID, itemId) {
+                continue
+            }
+
+            var itemWidget entity<UIWidget> = GetChildByIndex(_ItemsLayout, key) as entity<UIWidget>
+            UpdateItemWidget(itemWidget, itemId)
+        }
+
+        ResetItemsDetails()
+    }
+
+    func UpdateNewOwnItem(itemId int) {
+        if _CurrentItemsLists[_CurrentPageIndex] == nil {
+            return
+        }
+
+        var itemIndex int = IndexOf(_CurrentItemsLists[_CurrentPageIndex], itemId)
+        if itemIndex < 0 {
+            return
+        }
+
+        var itemWidget entity<UIWidget> = GetChildByIndex(_ItemsLayout, itemIndex) as entity<UIWidget>
+        UpdateItemWidget(itemWidget, itemId)
+
+        if itemId == _CurrentItemIdDetails {
+            var playerUID UUID = thisEntity<Player>.UserUID
+            var ownedMutations List<int> = CollectionManager.GetOwnMutationIdsByPetId(playerUID, itemId)
+
+            UpdateItemsDetails(itemId, true, ownedMutations)
+        }
+    }
+
+    func ShowDetailsItem(itemWidgetIndex int) {
+        UpdateSelectedBorder(itemWidgetIndex)
+
+        var playerUID UUID = thisEntity<Player>.UserUID
+
+        var itemId int = _CurrentItemsLists[_CurrentPageIndex][itemWidgetIndex]
+        var isOwnedItem bool = CollectionManager.IsOwnItem(playerUID, itemId)
+        var ownedMutations List<int> = CollectionManager.GetOwnMutationIdsByPetId(playerUID, itemId)
+
+        UpdateItemsDetails(itemId, isOwnedItem, ownedMutations)
+    }
+}

@@ -6,7 +6,77 @@
   "Resource": {
     "ui": {
       "id": "ui",
-      "children": []
+      "children": [
+        {
+          "refer": {
+            "fileId": "i7tg03p7we-mpant0vq-kupjooekqb",
+            "filePath": "Assets\\HUDs\\Collection.ui",
+            "_tag": {
+              "type": "GFileRefer"
+            },
+            "fileType": "ui"
+          },
+          "scriptName": "Collection",
+          "children": [
+            {
+              "id": "lLqoVpkE",
+              "scriptName": "TabsLayout"
+            },
+            {
+              "id": "EPAWh38N",
+              "scriptName": "ItemDetails"
+            },
+            {
+              "id": "xpVLoas0",
+              "scriptName": "ItemWidget"
+            },
+            {
+              "id": "DfRPTv3N",
+              "scriptName": "ItemDescription"
+            },
+            {
+              "id": "xlJ4LqEG",
+              "scriptName": "ItemsLayout"
+            },
+            {
+              "id": "xBZYhxTV",
+              "scriptName": "PrevPageButton"
+            },
+            {
+              "id": "EuyqGjjk",
+              "scriptName": "NextPageButton"
+            },
+            {
+              "id": "EDfUuci1",
+              "scriptName": "LoadingLabel"
+            },
+            {
+              "id": "LlpgpQCZ",
+              "scriptName": "Collection"
+            },
+            {
+              "id": "x7y9lGWp",
+              "scriptName": "BackgroundButton"
+            },
+            {
+              "id": "tZ0yKa5k",
+              "scriptName": "CloseButton"
+            },
+            {
+              "id": "pmKGhTPl",
+              "scriptName": "AllTabButton"
+            },
+            {
+              "id": "DxDCeL6z",
+              "scriptName": "Tab1Button"
+            },
+            {
+              "id": "lXeSd3RE",
+              "scriptName": "ShowButton"
+            }
+          ]
+        }
+      ]
     },
     "scene": {
       "id": "scene",
@@ -20,21 +90,38 @@
       "id": "ugcscript",
       "children": []
     },
-    "ugcscriptclient": {
-      "id": "ugcscriptclient",
-      "children": []
-    },
     "eca": {
       "id": "eca",
       "children": []
     },
-    "ecaclient": {
-      "id": "ecaclient",
-      "children": []
-    },
     "texture": {
       "id": "texture",
-      "children": []
+      "children": [
+        {
+          "refer": {
+            "fileId": "ea89a8fe33e831ff0a9f5b4d9af14c18",
+            "filePath": "lib://fftextures/WorkshopIconLibrary/T_34_M_WS_ICON_CIRCULAR.png",
+            "_tag": {
+              "type": "GFileRefer"
+            },
+            "fileType": "texture"
+          },
+          "scriptName": "MutationIcon",
+          "children": []
+        },
+        {
+          "refer": {
+            "fileId": "9ee0621c5c8dfc208c81ca202eb4caa4",
+            "filePath": "lib://fftextures/WorkshopIconLibrary/FF_WS_Clothes.png",
+            "_tag": {
+              "type": "GFileRefer"
+            },
+            "fileType": "texture"
+          },
+          "scriptName": "ItemIcon",
+          "children": []
+        }
+      ]
     },
     "effecttype": {
       "id": "effecttype",
@@ -79,7 +166,44 @@
     "textureResource": {
       "id": "textureResource",
       "children": []
+    },
+    "mesh": {
+      "id": "mesh",
+      "children": []
+    },
+    "material": {
+      "id": "material",
+      "children": []
+    },
+    "ac": {
+      "id": "ac",
+      "children": []
+    },
+    "particles": {
+      "id": "particles",
+      "children": []
+    },
+    "playerdata": {
+      "id": "playerdata",
+      "children": []
+    },
+    "pd": {
+      "id": "pd",
+      "children": []
+    },
+    "xbt": {
+      "id": "xbt",
+      "children": []
+    },
+    "pfm": {
+      "id": "pfm",
+      "children": []
+    },
+    "skilltype": {
+      "id": "skilltype",
+      "children": []
     }
-  }
+  },
+  "children": []
 }
-//"{FE:{"v":"0.1.2974255","c":{"FF":4404},"s":100}
+//"{FE:{"v":"1.17.4335043","c":{"FF":5001},"s":100}

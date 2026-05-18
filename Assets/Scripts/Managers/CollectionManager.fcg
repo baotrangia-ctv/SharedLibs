@@ -1,0 +1,338 @@
+import "Map.fcc" as Map
+import "List.fcc" as List
+import "Database.fcc" as Database
+import "StdLibrary.fcc" as StdLib
+import "EditorGenLib.fcc" as EditorLib
+
+import "../CoreLib/DatabaseController.fcg" as DatabaseController
+
+static graph CollectionManager {
+    SHEET_COLLECTION = "Collection"
+    KEY_COLLECTION Map<string, string> = Map<string, string>{
+        "CollectionItems": "CollectionItems",
+        "CollectionMutations": "CollectionMutations",
+    }
+    MAP_CODE = ""
+
+    ITEM_START_INDEX int = 1
+    ITEM_COUNT int = 20
+    MUTATION_START_INDEX int = 1 // Note: Not include normal mutation (if normal = 0, start = 1; if normal = 1, start = 2)
+    MUTATION_COUNT int = 5
+    RARITY_ALL int = 0
+
+    _OwnItems Map<UUID, List<int>> // Note: Only can store 1000 items
+    _OwnMutations Map<UUID, List<List<int>>> // Note: Only can store 1000 mutations
+
+    event OnAwake() {
+        InitCollectionManager()
+
+        DatabaseController.RegisterDatabase(SHEET_COLLECTION)
+    }
+
+    func InitCollectionManager() {
+        if _OwnItems != nil {
+            return
+        }
+
+        _OwnItems = Map<UUID, List<int>>{}
+        _OwnMutations = Map<UUID, List<List<int>>>{}
+    }
+
+    func InitPlayerCollection(playerUID UUID) {
+        if _OwnItems[playerUID] != nil {
+            return
+        }
+
+        _OwnItems[playerUID] = List<int>{}
+        _OwnMutations[playerUID] = List<List<int>>{}
+    }
+
+    // ==========================
+    // Load Data
+    // ==========================
+
+    event OnDatabaseLoad(playerUID UUID, databaseType string) {
+        if databaseType == SHEET_COLLECTION {
+            LoadCollectionDatabase(playerUID)
+        }
+
+        DatabaseController.MarkAllowSaveData(playerUID)
+    }
+
+    async func LoadCollectionDatabase(playerUID UUID) {
+        InitPlayerCollection(playerUID)
+
+        wait ReadFromDataStoreBatch(
+            SHEET_COLLECTION,
+            List<UUID>{
+                playerUID,
+                playerUID,
+            },
+            List<string>{
+                KEY_COLLECTION["CollectionItems"],
+                KEY_COLLECTION["CollectionMutations"],
+            },
+            out var results,
+            MAP_CODE,
+            out var statusCodes,
+        )
+
+        wait LoadPlayerCollection(playerUID, "CollectionItems", results[0], statusCodes[0], out var collectionItems, out var isSuccessCollectionItems)
+        wait LoadPlayerCollection(playerUID, "CollectionMutations", results[1], statusCodes[1], out var collectionMutations, out var isSuccessCollectionMutations)
+
+        if (!isSuccessCollectionItems || !isSuccessCollectionMutations) {
+            return
+        }
+
+        _OwnItems[playerUID] = collectionItems as List<int>
+        _OwnMutations[playerUID] = collectionMutations as List<List<int>>
+
+        DatabaseController.SetDatabaseReady(playerUID, SHEET_COLLECTION, true)
+    }
+
+    async func LoadPlayerCollection(
+        playerUID UUID,
+        dataType string,
+        rawCollection object,
+        rawStatusCode StatusCode,
+        out var result List<object>,
+        out var isSuccess bool) {
+        var keyCollection string = KEY_COLLECTION[dataType]
+        isSuccess = false
+
+        if rawStatusCode != StatusCode.NoError {
+            wait DatabaseController.RetryLoadData(SHEET_COLLECTION, playerUID, keyCollection, out var readCollection, MAP_CODE, out var statusCode)
+
+            rawCollection = readCollection
+            if statusCode != StatusCode.NoError {
+                return
+            }
+        }
+
+        if rawCollection == nil {
+            rawCollection = List<object>{}
+            result = List<object>{}
+        } else {
+            result = rawCollection as List<object>
+        }
+
+        if dataType == "CollectionItems" {
+            // Do nothing
+        } else {
+            var rawCollectionInt List<object> = rawCollection as List<int>
+            while List.Length(rawCollectionInt) < ITEM_COUNT {
+                List.Append(rawCollectionInt, 0)
+            }
+
+            if dataType == "CollectionMutations" {
+                result = ConvertMutationsToBinary(rawCollectionInt as List<int>, MUTATION_COUNT - MUTATION_START_INDEX + 1)
+            } else {}
+        }
+
+        isSuccess = true
+    }
+
+    // ==========================
+    // Save Data
+    // ==========================
+
+    event OnDatabaseSave(playerUID UUID, databaseType string) {
+        if databaseType == SHEET_COLLECTION {
+            SaveCollectionDatabase(playerUID)
+        }
+    }
+
+    async func SaveCollectionDatabase(playerUID UUID) {
+        wait SavePlayerCollection(playerUID, "CollectionItems", _OwnItems[playerUID])
+        wait SavePlayerCollection(playerUID, "CollectionMutations", _OwnMutations[playerUID])
+
+        DatabaseController.SetDatabaseSaved(playerUID, SHEET_COLLECTION, true)
+
+        WaitForMillisecond(3000)
+        ClearPlayerData(playerUID)
+    }
+
+    async func SavePlayerCollection(playerUID UUID, dataType string, collectionValue List<object>) {
+        var saveValue List<object> = collectionValue
+        if dataType != "CollectionItems" {
+            saveValue = ConvertMutationsToListInt(collectionValue as List<List<int>>)
+        }
+
+        wait WriteToDataStoreV2(SHEET_COLLECTION, playerUID, KEY_COLLECTION[dataType], saveValue, MAP_CODE, out var statusCode)
+    }
+
+    func ClearPlayerData(playerUID UUID) {
+        Map.Remove(_OwnItems, playerUID)
+        Map.Remove(_OwnMutations, playerUID)
+    }
+
+    // ==========================
+    // Helper Functions
+    // ==========================
+
+    // Convert db mutations to list binary to check item mutations
+    func ConvertMutationsToBinary(dbMutations List<int>, mutationCount int) List<List<int>> {
+        var ownMutations = List<List<int>>{}
+
+        for key, dbMutation in dbMutations {
+            var newOwnMutations List<int> = ConvertIntToBinary(dbMutation)
+            List.Reverse(newOwnMutations)
+
+            while List.Length(newOwnMutations) < mutationCount {
+                List.Append(newOwnMutations, 0)
+            }
+
+            List.Append(ownMutations, newOwnMutations)
+        }
+
+        return ownMutations
+    }
+
+    func ConvertIntToBinary(num int) List<int> {
+        var result List<int> = List<int>{}
+        while num > 0 {
+            var chunk int = num % 2
+            Append(result, chunk)
+            num = num / 2
+        }
+        List.Reverse(result)
+        return result
+    }
+
+    // Convert list binary to db mutations to save to database
+    func ConvertMutationsToListInt(mutations List<List<int>>) List<int> {
+        var result List<int> = List<int>{}
+
+        for key, mutation in mutations {
+            List.Reverse(mutation)
+
+            var newDbOwnMutations int = ConvertBinaryToInt(mutation)
+            List.Append(result, newDbOwnMutations)
+
+            List.Reverse(mutation)
+        }
+
+        return result
+    }
+
+    func ConvertBinaryToInt(num List<int>) int {
+        var result int = 0
+        for key, chunk in num {
+            result = result * 2 + chunk
+        }
+        return result
+    }
+
+    // ==========================
+    // Update New Items
+    // ==========================
+
+    event OnOwnNewItem(player entity<Player>, itemId int, mutationId int) {
+        var playerUID UUID = player<Player>.UserUID
+
+        while !DatabaseController.IsDatabaseReady(playerUID, SHEET_COLLECTION) {
+            WaitForMillisecond(1000)
+        }
+
+        SetOwnNewItem(playerUID, itemId, mutationId)
+    }
+
+    func SetOwnNewItem(playerUID UUID, itemId int, mutationId int) {
+        if !IsValidItemId(itemId) {
+            return
+        }
+
+        UpdateOwnItems(playerUID, itemId)
+        UpdateOwnMutations(playerUID, itemId, mutationId)
+    }
+
+    func IsValidItemId(itemId int) bool {
+        return itemId >= ITEM_START_INDEX && itemId < ITEM_START_INDEX + ITEM_COUNT
+    }
+
+    func IsValidMutationId(mutationId int) bool {
+        return mutationId >= MUTATION_START_INDEX && mutationId < MUTATION_START_INDEX + MUTATION_COUNT
+    }
+
+    // ==========================
+    // Items Collection
+    // ==========================
+
+    func GetOwnItems(playerUID UUID) List<int> {
+        return List.Clone(_OwnItems[playerUID]) as List<int>
+    }
+
+    func GetOwnItemIdByIndex(playerUID UUID, index int) int {
+        if index < 0 || index >= List.Length(GetOwnItems(playerUID)) {
+            return -1
+        }
+
+        var pcItems List<int> = GetOwnItems(playerUID)
+        return pcItems[index]
+    }
+
+    func IsOwnItem(playerUID UUID, itemId int) bool {
+        return List.Contain(GetOwnItems(playerUID), itemId)
+    }
+
+    func UpdateOwnItems(playerUID UUID, itemId int) {
+        if List.Contain(GetOwnItems(playerUID), itemId) {
+            return
+        }
+
+        List.Append(_OwnItems[playerUID], itemId)
+    }
+
+    // ==========================
+    // Mutations Collection
+    // ==========================
+
+    func GetOwnMutations(playerUID UUID) List<List<int>> {
+        return List.Clone(_OwnMutations[playerUID]) as List<List<int>>
+    }
+
+    func GetOwnMutationsByItemId(playerUID UUID, itemId int) List<int> {
+        var pcMutations List<List<int>> = GetOwnMutations(playerUID)
+        if !IsValidItemId(itemId) {
+            return List<int>{}
+        }
+
+        return List.Clone(pcMutations[itemId - ITEM_START_INDEX]) as List<int>
+    }
+
+    func GetOwnMutationIdsByPetId(playerUID UUID, petId int) List<int> {
+        var mutations List<int> = List<int>{}
+        for mutationId = MUTATION_START_INDEX, MUTATION_COUNT + 1, 1 {
+            if IsOwnMutation(playerUID, petId, mutationId) {
+                List.Append(mutations, mutationId)
+            }
+        }
+
+        return mutations
+    }
+
+    func IsOwnMutation(playerUID UUID, itemId int, mutationId int) bool {
+        if !IsValidMutationId(mutationId) {
+            return false
+        }
+
+        var mutations List<int> = GetOwnMutationsByItemId(playerUID, itemId)
+
+        return mutations[mutationId - MUTATION_START_INDEX] == 1
+    }
+
+    func GetOwnMutationCountByItemId(playerUID UUID, itemId int) int {
+        return List.Length(GetOwnMutationIdsByPetId(playerUID, itemId))
+    }
+
+    func UpdateOwnMutations(playerUID UUID, itemId int, mutationId int) {
+        if mutationId <= 1 {
+            return
+        }
+
+        var itemIndex int = itemId - ITEM_START_INDEX
+        var mutationIndex int = mutationId - MUTATION_START_INDEX
+
+        _OwnMutations[playerUID][itemIndex][mutationIndex] = 1
+    }
+}

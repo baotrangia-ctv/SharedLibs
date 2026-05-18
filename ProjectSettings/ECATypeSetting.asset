@@ -6,10 +6,36 @@
   "_entityId": "kx6eTQhg",
   "children": [],
   "prefabVariant": null,
-  "activeValue": null,
-  "unlockedValue": null,
+  "activeValue": {
+    "selfValue": true,
+    "valueTag": "activeValue"
+  },
+  "unlockedValue": {
+    "selfValue": true,
+    "valueTag": "unlockedValue"
+  },
   "editorLockValue": false,
   "editorVisibleValue": true,
-  "TypeDefines": {}
+  "TypeDefines": {
+    "HudButtonWidget": {
+      "label": "UI Widget Button",
+      "name": "HudButtonWidget",
+      "bases": [
+        "HudWidget"
+      ],
+      "ecaScripts": [
+        {
+          "fileId": "0spp7mdgipxj-me6l9dld-vsaohmqstc",
+          "_tag": {
+            "type": "GFileRefer"
+          },
+          "fileType": "ugcscript"
+        }
+      ],
+      "typeID": 41,
+      "PropDefines": [],
+      "IsPartial": true
+    }
+  }
 }
-//"{FE:{"v":"0.1.2974255","c":{"FF":4404},"s":100}
+//"{FE:{"v":"1.17.4335043","c":{"FF":5001},"s":100}

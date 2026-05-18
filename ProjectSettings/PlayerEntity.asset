@@ -13,8 +13,14 @@
       "_entityId": "cpZtVQOB",
       "children": [],
       "prefabVariant": null,
-      "activeValue": null,
-      "unlockedValue": null,
+      "activeValue": {
+        "selfValue": true,
+        "valueTag": "activeValue"
+      },
+      "unlockedValue": {
+        "selfValue": true,
+        "valueTag": "unlockedValue"
+      },
       "editorLockValue": false,
       "editorVisibleValue": true,
       "CameraType": "Classic",
@@ -36,13 +42,39 @@
     }
   ],
   "prefabVariant": null,
-  "activeValue": null,
-  "unlockedValue": null,
+  "activeValue": {
+    "selfValue": true,
+    "valueTag": "activeValue"
+  },
+  "unlockedValue": {
+    "selfValue": true,
+    "valueTag": "unlockedValue"
+  },
   "editorLockValue": false,
   "editorVisibleValue": true,
-  "ecaProps": {},
+  "ecaProps": {
+    "Player": {},
+    "FightingEntity": {},
+    "AimableEntity": {},
+    "Entity": {},
+    "ScoreableEntity": {},
+    "RankableEntity": {},
+    "Visibility": {},
+    "BuffableEntity": {},
+    "FormulableEntity": {},
+    "AnimationControllerAble": {}
+  },
   "ecaScript": null,
-  "ecaScripts": [],
+  "ecaScripts": [
+    {
+      "fileId": "h3vhr0cm9w-mpanti1a-5uxlqxzbbf",
+      "filePath": "Assets\\Scripts\\HUDs\\Collection\\HudCollection.fcg",
+      "_tag": {
+        "type": "GFileRefer"
+      },
+      "fileType": "ugcscript"
+    }
+  ],
   "avatarInfo": null,
   "sceneData": {
     "enableDepthMap": false,
@@ -238,7 +270,15 @@
     "playerskill_teleporter_cd_percent": 100,
     "playerskill_fireboyflame_cd_percent": 100,
     "EnableInventoryDrop": false,
-    "playerskill_autopathbomb_cd_percent": 100
+    "playerskill_autopathbomb_cd_percent": 100,
+    "EnableAOIFilter": false,
+    "CameraViewingAngleRestrictionType": 0,
+    "playerskill_cityhero_cd_percent": 100,
+    "playerskill_electricgirl_cd_percent": 100,
+    "playerskill_auroraboy_cd_percent": 100,
+    "playerskill_eclipseman_cd_percent": 100,
+    "DisableEnemyFootstepVibrate": false,
+    "EnableCheckPlayerMatchState": false
   },
   "physicsData": {
     "ECCTParam_Gravity": {
@@ -264,6 +304,10 @@
   },
   "_entityName": "FE_0_HW_GAME_EDITOR_PLAYERSETTING",
   "modId": 11,
-  "modOpen": true
+  "modOpen": true,
+  "avatarType": 0,
+  "genderType": 0,
+  "usePDV2": false,
+  "showSwitch": false
 }
-//"{FE:{"v":"0.1.2974255","c":{"FF":4404},"s":100}
+//"{FE:{"v":"1.17.4335043","c":{"FF":5001},"s":100}

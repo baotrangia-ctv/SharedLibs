@@ -1,0 +1,68 @@
+import "StdLibrary.fcc" as StdLib
+import "EditorGenLib.fcc" as EditorLib
+
+static graph Configs {
+    RARITY_COLOR Map<string, Color> = Map<string, Color>{
+        "COMMON": #8CFF91,
+        "RARE": #4CC8FE,
+        "EPIC": #EA70FF,
+        "LEGENDARY": #FED868,
+        "MYTHIC": #FF6F6F,
+        "APEX": #FF9F43,
+    }
+    RARITY_ITEMS Map<string, List<int>> = Map<string, List<int>>{
+        "COMMON": List<int>{1, 2, 3, 4, 5, 6, 7, 8, 9},
+        "RARE": List<int>{10, 11, 12, 13, 14, 15, 16, 17, 18, 19},
+    }
+    RARITY_INDEX Map<int, string> = Map<int, string>{
+        0: "ALL",
+        1: "COMMON",
+    }
+
+    // ====== COLLECTION ======
+
+    func GetItemsByTab(tabIndex int) List<int> {
+        var rarity string = GetRarityFromIndex(tabIndex)
+        if rarity == "ALL" {
+            return List<int>{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19}
+        }
+
+        return RARITY_ITEMS[rarity]
+    }
+
+    func GetRarityFromIndex(index int) string {
+        return RARITY_INDEX[index]
+    }
+
+    func GetItemName(itemId int) string {
+        var itemName string = "Item " + itemId
+        return itemName
+    }
+
+    func GetItemIconKey(itemId int) string {
+        return "ItemIcon"
+    }
+
+    func GetItemRarity(itemId int) string {
+        if itemId < 10 {
+            return "COMMON"
+        } else if itemId < 20 {
+            return "RARE"
+        } else if itemId < 30 {
+            return "EPIC"
+        } else if itemId < 40 {
+            return "LEGENDARY"
+        } else if itemId < 50 {
+            return "MYTHIC"
+        }
+        return "APEX"
+    }
+
+    func GetRarityColor(rarity string) Color {
+        return RARITY_COLOR[rarity]
+    }
+
+    func GetMutationIconKey(mutationId int) string {
+        return "MutationIcon"
+    }
+}

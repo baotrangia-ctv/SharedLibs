@@ -1,0 +1,31 @@
+{
+  "_entityName": "FE_39_M_DATA",
+  "_tag": {
+    "type": "ff.DataStorage"
+  },
+  "_entityId": "XtMCJRad",
+  "children": [],
+  "prefabVariant": null,
+  "activeValue": null,
+  "unlockedValue": null,
+  "editorLockValue": false,
+  "editorVisibleValue": true,
+  "modId": 31,
+  "storageOpen": true,
+  "rankSheets": [],
+  "dataSheets": [
+    {
+      "sheetName": "Collection",
+      "sheetId": "KmT5mfZf",
+      "type": "ListT_Int",
+      "keyType": "String"
+    }
+  ],
+  "dataSheetsClient": [],
+  "statisticalSheets": [],
+  "multicolumnSheets": [],
+  "multicolumnSheetsClient": [],
+  "craftlandLeadboard": null,
+  "showSwitch": true
+}
+//"{FE:{"v":"1.17.4335043","c":{"FF":5001},"s":100}

@@ -1,0 +1,46 @@
+import "Hud.fcc" as Hud
+import "List.fcc" as List
+import "StdLibrary.fcc" as StdLib
+import "EditorGenLib.fcc" as EditorLib
+import Res from "EditorGenLib.fcc"
+
+import "../../Mockups/Configs.fcg" as Configs
+import "../../Managers/CollectionManager.fcg" as CollectionManager
+
+static graph ItemUtils {
+    ACTIVE_COLOR = #FFFFFF
+    DEFAULT_COLOR = #111111
+
+    func UpdateItemWidget(player entity<Player>, itemWidget entity<UIWidget>, itemId int, mutationId int, weatherIds List<int>, isShowOwned bool, isShowName bool, isShowMutation bool) {
+        var rarityBg entity<UIWidgetImage> = GetChildByName(itemWidget, "RarityBG") as entity<UIWidgetImage>
+        var itemThumbnail entity<UIWidgetImage> = GetChildByName(itemWidget, "Thumbnail") as entity<UIWidgetImage>
+        var itemName entity<UIWidgetLabel> = GetChildByName(itemWidget, "Name") as entity<UIWidgetLabel>
+        var mutationIcon entity<UIWidgetImage> = GetChildByName(itemWidget, "MutationIcon") as entity<UIWidgetImage>
+
+        itemThumbnail<UIWidgetImage>.SpriteName = Res.Sprite[Configs.GetItemIconKey(itemId) as EResKeySprite]
+
+        var playerUID UUID = player<Player>.UserUID
+        var isOwnedItem bool = CollectionManager.IsOwnItem(playerUID, itemId)
+
+        if isOwnedItem || !isShowOwned {
+            rarityBg<UIWidgetImage>.Color = Configs.GetRarityColor(Configs.GetItemRarity(itemId))
+            itemThumbnail<UIWidgetImage>.Color = ACTIVE_COLOR
+            itemName<UIWidgetLabel>.Content = Configs.GetItemName(itemId)
+        } else {
+            rarityBg<UIWidgetImage>.Color = DEFAULT_COLOR
+            itemThumbnail<UIWidgetImage>.Color = DEFAULT_COLOR
+            itemName<UIWidgetLabel>.Content = "???"
+        }
+
+        itemName<UIWidget>.IsVisible = isShowName
+
+        if isShowMutation {
+            mutationIcon<UIWidget>.IsVisible = true
+            mutationIcon<UIWidgetImage>.SpriteName = Res.Sprite[Configs.GetMutationIconKey(mutationId) as EResKeySprite]
+        } else {
+            mutationIcon<UIWidget>.IsVisible = false
+        }
+
+        itemWidget<UIWidget>.IsVisible = true
+    }
+}

@@ -52,7 +52,7 @@
       "name": "OnDatabaseSave",
       "eventType": 0,
       "enitityType": "Entity",
-      "typeID": 100000,
+      "typeID": 100003,
       "props": [
         {
           "name": "playerUID",
@@ -69,13 +69,64 @@
       "apiTargetV2": "both",
       "version": 45,
       "key": "signal_90555852"
+    },
+    "signal_22363618": {
+      "name": "OnTapButton",
+      "eventType": 0,
+      "enitityType": "Component",
+      "typeID": 100008,
+      "props": [
+        {
+          "name": "player",
+          "value": "Player",
+          "key": 1
+        },
+        {
+          "name": "button",
+          "value": "HudButtonWidget",
+          "key": 2
+        }
+      ],
+      "propCount": 2,
+      "apiTargetV2": "both",
+      "version": 45,
+      "key": "signal_22363618"
+    },
+    "signal_77613899": {
+      "name": "OnOwnNewItem",
+      "eventType": 0,
+      "enitityType": "Entity",
+      "typeID": 100009,
+      "props": [
+        {
+          "name": "player",
+          "value": "Player",
+          "key": 1
+        },
+        {
+          "name": "itemId",
+          "value": "Int",
+          "key": 2
+        },
+        {
+          "name": "mutationId",
+          "value": "Int",
+          "key": 4
+        }
+      ],
+      "propCount": 4,
+      "apiTargetV2": "both",
+      "version": 45,
+      "key": "signal_77613899"
     }
   },
   "customName": {
     "OnDatabaseLoad": "signal_33310432",
     "OnDatabaseReady": "signal_47654996",
-    "OnDatabaseSave": "signal_90555852"
+    "OnDatabaseSave": "signal_90555852",
+    "OnTapButton": "signal_22363618",
+    "OnOwnNewItem": "signal_77613899"
   },
   "children": []
 }
-//"{FE:{"v":"1.16.4231768","c":{"FF":5001},"s":100}
+//"{FE:{"v":"1.17.4335043","c":{"FF":5001},"s":100}

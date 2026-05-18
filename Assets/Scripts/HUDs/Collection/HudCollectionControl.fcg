@@ -1,0 +1,45 @@
+import "Hud.fcc" as Hud
+import "List.fcc" as List
+import "StdLibrary.fcc" as StdLib
+import "EditorGenLib.fcc" as EditorLib
+
+import "./HudCollection.fcg" as HudCollection
+import "../../CoreLib/DatabaseController.fcg" as DatabaseController
+
+graph HudCollectionControl {
+
+    event OnTapButton(player entity<Player>, button entity<UIWidgetButton>) {
+        start HandleTapButton(player, button)
+    }
+
+    async func HandleTapButton(player entity<Player>, button entity<UIWidgetButton>) {
+        if (!DatabaseController.AreAllDatabasesReady(player<Player>.UserUID)) {
+            return
+        }
+
+        // ------------ Menu ------------
+        if button == GetWidgetFromCustomUI(player, button<UIWidget>.ParentUI, EResUICollection.ShowButton) {
+            player<HudCollection>.OpenCollection()
+        } else if button == GetWidgetFromCustomUI(player, button<UIWidget>.ParentUI, EResUICollection.BackgroundButton) {
+            player<HudCollection>.CloseCollection()
+        } else if button == GetWidgetFromCustomUI(player, button<UIWidget>.ParentUI, EResUICollection.CloseButton) {
+            player<HudCollection>.CloseCollection()
+        } else if button == GetWidgetFromCustomUI(player, button<UIWidget>.ParentUI, EResUICollection.AllTabButton) {
+            player<HudCollection>.SwitchTab(button)
+        } else if button == GetWidgetFromCustomUI(player, button<UIWidget>.ParentUI, EResUICollection.Tab1Button) {
+            player<HudCollection>.SwitchTab(button)
+        } else if button == GetWidgetFromCustomUI(player, button<UIWidget>.ParentUI, EResUICollection.PrevPageButton) {
+            player<HudCollection>.SwitchPrevPage()
+        } else if button == GetWidgetFromCustomUI(player, button<UIWidget>.ParentUI, EResUICollection.NextPageButton) {
+            player<HudCollection>.SwitchNextPage()
+        } else {}
+
+        if button<Entity>.Name == "ShowDetailsButton" {
+            var itemWidget entity<UIWidget> = GetParent(button) as entity<UIWidget>
+            var itemsLayout entity<UIWidgetLayout> = GetParent(itemWidget) as entity<UIWidgetLayout>
+            var itemIndex int = List.IndexOf(GetChildren(itemsLayout), itemWidget)
+
+            player<HudCollection>.ShowDetailsItem(itemIndex)
+        }
+    }
+}
