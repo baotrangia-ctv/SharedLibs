@@ -33,14 +33,15 @@ static graph ActionController {
     // Action Validation
     // ==========================
 
-    func RequestAction(playerUID UUID, actionType string, payload Map<object, object>) {
-        LogInfo("[ControllerManager] RequestAction(playerUID: " + playerUID + ", actionType: " + actionType + ", payload: " + payload + ")")
+    func RequestAction(actionType string, payload Map<object, object>) {
+        LogInfo("[ControllerManager] RequestAction(actionType: " + actionType + ", payload: " + payload + ")")
 
         if !IsActionRegistered(actionType) {
             LogInfo("[ControllerManager][RequestAction] Action not registered: " + actionType)
             return
         }
 
+        var playerUID UUID = payload[RequestParameter.PlayerUID] as UUID
         if !DatabaseController.AreAllDatabasesReady(playerUID) {
             LogInfo("[ControllerManager][RequestAction] Databases not ready: " + actionType)
             return
