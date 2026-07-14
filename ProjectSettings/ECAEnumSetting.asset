@@ -4,8 +4,536 @@
   },
   "_entityId": "F9G9PNGC",
   "enumCount": 0,
-  "enumDefines": {},
-  "enumNameMap": {},
+  "enumDefines": {
+    "CustomEnum15662370": {
+      "label": "RequestParameter",
+      "key": "CustomEnum15662370",
+      "type": "Int",
+      "typeID": 100010,
+      "info": [
+        {
+          "label": "PlayerUID",
+          "key": "E42469718",
+          "value": 0,
+          "type": "Int"
+        },
+        {
+          "label": "TargetUID",
+          "key": "E91883353",
+          "value": 1,
+          "type": "Int"
+        },
+        {
+          "label": "PetSlot",
+          "key": "E81065105",
+          "value": 2,
+          "type": "Int"
+        },
+        {
+          "label": "TargetPetSlot",
+          "key": "E30319938",
+          "value": 3,
+          "type": "Int"
+        },
+        {
+          "label": "ParadePet",
+          "key": "E70142317",
+          "value": 4,
+          "type": "Int"
+        },
+        {
+          "label": "PetIndex",
+          "key": "E19125652",
+          "value": 5,
+          "type": "Int"
+        },
+        {
+          "label": "StealingTime",
+          "key": "E69645849",
+          "value": 6,
+          "type": "Int"
+        },
+        {
+          "label": "Cash",
+          "key": "E41027941",
+          "value": 7,
+          "type": "Int"
+        },
+        {
+          "label": "PetCoin",
+          "key": "E22690327",
+          "value": 8,
+          "type": "Int"
+        },
+        {
+          "label": "Dust",
+          "key": "E20076870",
+          "value": 9,
+          "type": "Int"
+        },
+        {
+          "label": "Mutagen",
+          "key": "E10436666",
+          "value": 10,
+          "type": "Int"
+        },
+        {
+          "label": "Count",
+          "key": "E60813636",
+          "value": 11,
+          "type": "Int"
+        },
+        {
+          "label": "BaseColor",
+          "key": "E78378028",
+          "value": 12,
+          "type": "Int"
+        },
+        {
+          "label": "Date",
+          "key": "E96534091",
+          "value": 13,
+          "type": "Int"
+        },
+        {
+          "label": "Mission",
+          "key": "E67477738",
+          "value": 14,
+          "type": "Int"
+        },
+        {
+          "label": "Milestone",
+          "key": "E12591645",
+          "value": 15,
+          "type": "Int"
+        },
+        {
+          "label": "PetId",
+          "key": "E43014786",
+          "value": 16,
+          "type": "Int"
+        },
+        {
+          "label": "MutationId",
+          "key": "E22895748",
+          "value": 17,
+          "type": "Int"
+        },
+        {
+          "label": "WeatherIds",
+          "key": "E63758956",
+          "value": 18,
+          "type": "Int"
+        },
+        {
+          "label": "RewardType",
+          "key": "E26612063",
+          "value": 19,
+          "type": "Int"
+        },
+        {
+          "label": "RewardValue",
+          "key": "E23896455",
+          "value": 20,
+          "type": "Int"
+        },
+        {
+          "label": "PetLevel",
+          "key": "E98550457",
+          "value": 21,
+          "type": "Int"
+        },
+        {
+          "label": "PetIncome",
+          "key": "E70375695",
+          "value": 22,
+          "type": "Int"
+        },
+        {
+          "label": "RetrieveSlot",
+          "key": "E85548302",
+          "value": 23,
+          "type": "Int"
+        },
+        {
+          "label": "MailId",
+          "key": "E73614632",
+          "value": 24,
+          "type": "Int"
+        },
+        {
+          "label": "RewardAmount",
+          "key": "E24210628",
+          "value": 25,
+          "type": "Int"
+        },
+        {
+          "label": "IsConfigMail",
+          "key": "E85225308",
+          "value": 26,
+          "type": "Int"
+        },
+        {
+          "label": "MailIndex",
+          "key": "E84201247",
+          "value": 27,
+          "type": "Int"
+        }
+      ],
+      "isCustom": true,
+      "isDirty": false
+    },
+    "CustomEnum45648656": {
+      "label": "CustomStatusCode",
+      "key": "CustomEnum45648656",
+      "type": "Int",
+      "typeID": 100011,
+      "info": [
+        {
+          "label": "NoError",
+          "key": "E30321710",
+          "value": 0,
+          "type": "Int"
+        },
+        {
+          "label": "ConflictState",
+          "key": "E73846916",
+          "value": 1,
+          "type": "Int"
+        },
+        {
+          "label": "MutexLockFail",
+          "key": "E97641657",
+          "value": 2,
+          "type": "Int"
+        },
+        {
+          "label": "ActionTooFast",
+          "key": "E66028788",
+          "value": 3,
+          "type": "Int"
+        },
+        {
+          "label": "InvalidValue",
+          "key": "E16506487",
+          "value": 4,
+          "type": "Int"
+        },
+        {
+          "label": "ConflictValue",
+          "key": "E97692504",
+          "value": 5,
+          "type": "Int"
+        },
+        {
+          "label": "DataNil",
+          "key": "E14630099",
+          "value": 101,
+          "type": "Int"
+        },
+        {
+          "label": "DataMissCached",
+          "key": "E32378165",
+          "value": 102,
+          "type": "Int"
+        },
+        {
+          "label": "PlayerNoExist",
+          "key": "E16650355",
+          "value": 201,
+          "type": "Int"
+        },
+        {
+          "label": "PlayerDisconnect",
+          "key": "E74729917",
+          "value": 202,
+          "type": "Int"
+        },
+        {
+          "label": "PlayerFullBase",
+          "key": "E31988125",
+          "value": 203,
+          "type": "Int"
+        },
+        {
+          "label": "PlayerWaitingPet",
+          "key": "E18394255",
+          "value": 204,
+          "type": "Int"
+        },
+        {
+          "label": "PlayerStealing",
+          "key": "E96565612",
+          "value": 205,
+          "type": "Int"
+        },
+        {
+          "label": "PlayerBeingStolen",
+          "key": "E57411117",
+          "value": 206,
+          "type": "Int"
+        },
+        {
+          "label": "PlayerSelecting",
+          "key": "E95258063",
+          "value": 207,
+          "type": "Int"
+        },
+        {
+          "label": "PlayerHack",
+          "key": "E30813762",
+          "value": 208,
+          "type": "Int"
+        },
+        {
+          "label": "PlayerStateConflict",
+          "key": "E64490301",
+          "value": 209,
+          "type": "Int"
+        },
+        {
+          "label": "PlayerFullMail",
+          "key": "E75563379",
+          "value": 210,
+          "type": "Int"
+        },
+        {
+          "label": "PlayerFullStorage",
+          "key": "E63354602",
+          "value": 211,
+          "type": "Int"
+        },
+        {
+          "label": "PetNoInteractive",
+          "key": "E59691020",
+          "value": 301,
+          "type": "Int"
+        },
+        {
+          "label": "PetBought",
+          "key": "E97635621",
+          "value": 302,
+          "type": "Int"
+        },
+        {
+          "label": "PetBeingBought",
+          "key": "E97747604",
+          "value": 303,
+          "type": "Int"
+        },
+        {
+          "label": "PetInParadePool",
+          "key": "E69452178",
+          "value": 304,
+          "type": "Int"
+        },
+        {
+          "label": "PetNoExist",
+          "key": "E61537710",
+          "value": 305,
+          "type": "Int"
+        },
+        {
+          "label": "PetIndexConflict",
+          "key": "E20006679",
+          "value": 306,
+          "type": "Int"
+        },
+        {
+          "label": "PetInteracted",
+          "key": "E56828955",
+          "value": 307,
+          "type": "Int"
+        },
+        {
+          "label": "PetStateConflict",
+          "key": "E59430902",
+          "value": 308,
+          "type": "Int"
+        },
+        {
+          "label": "PetAlreadyHasMutation",
+          "key": "E28530497",
+          "value": 309,
+          "type": "Int"
+        },
+        {
+          "label": "PetCannotMutate",
+          "key": "E54560367",
+          "value": 310,
+          "type": "Int"
+        },
+        {
+          "label": "PetMaxLevel",
+          "key": "E10479658",
+          "value": 311,
+          "type": "Int"
+        },
+        {
+          "label": "PetLock",
+          "key": "E91132836",
+          "value": 312,
+          "type": "Int"
+        },
+        {
+          "label": "NotEnoughCash",
+          "key": "E99954520",
+          "value": 401,
+          "type": "Int"
+        },
+        {
+          "label": "NotEnoughPetCoin",
+          "key": "E96422421",
+          "value": 402,
+          "type": "Int"
+        },
+        {
+          "label": "NotEnoughDust",
+          "key": "E75145135",
+          "value": 403,
+          "type": "Int"
+        },
+        {
+          "label": "NotEnoughStock",
+          "key": "E70741145",
+          "value": 404,
+          "type": "Int"
+        },
+        {
+          "label": "NotEnoughPetCoinToRetrieve",
+          "key": "E87664899",
+          "value": 405,
+          "type": "Int"
+        },
+        {
+          "label": "RebirthHasEgg",
+          "key": "E24839958",
+          "value": 501,
+          "type": "Int"
+        },
+        {
+          "label": "RebirthLackPet",
+          "key": "E27819423",
+          "value": 502,
+          "type": "Int"
+        },
+        {
+          "label": "RebirthMaxLevel",
+          "key": "E73375177",
+          "value": 503,
+          "type": "Int"
+        },
+        {
+          "label": "RebirthNotReach",
+          "key": "E82940392",
+          "value": 504,
+          "type": "Int"
+        },
+        {
+          "label": "SlotInvalid",
+          "key": "E29045296",
+          "value": 601,
+          "type": "Int"
+        },
+        {
+          "label": "SlotHasEgg",
+          "key": "E30835944",
+          "value": 602,
+          "type": "Int"
+        },
+        {
+          "label": "RewardNotAvailable",
+          "key": "E48149452",
+          "value": 701,
+          "type": "Int"
+        },
+        {
+          "label": "RewardAlreadyClaimed",
+          "key": "E31244606",
+          "value": 702,
+          "type": "Int"
+        },
+        {
+          "label": "RewardInvalid",
+          "key": "E92211881",
+          "value": 703,
+          "type": "Int"
+        },
+        {
+          "label": "MissionInvalid",
+          "key": "E98897184",
+          "value": 801,
+          "type": "Int"
+        },
+        {
+          "label": "MissionClaimed",
+          "key": "E72802867",
+          "value": 802,
+          "type": "Int"
+        },
+        {
+          "label": "MissionCompleted",
+          "key": "E17846129",
+          "value": 803,
+          "type": "Int"
+        },
+        {
+          "label": "MissionIncompleted",
+          "key": "E77749623",
+          "value": 804,
+          "type": "Int"
+        },
+        {
+          "label": "MilestoneInvalid",
+          "key": "E78079393",
+          "value": 901,
+          "type": "Int"
+        },
+        {
+          "label": "MilestoneClaimed",
+          "key": "E27963498",
+          "value": 902,
+          "type": "Int"
+        },
+        {
+          "label": "MilestoneNotEnough",
+          "key": "E90544053",
+          "value": 903,
+          "type": "Int"
+        },
+        {
+          "label": "GiftCodeInvalid",
+          "key": "E43436829",
+          "value": 1001,
+          "type": "Int"
+        },
+        {
+          "label": "GiftCodeHasUsed",
+          "key": "E93320418",
+          "value": 1002,
+          "type": "Int"
+        },
+        {
+          "label": "GiftCodeRebirthRequire",
+          "key": "E62267318",
+          "value": 1003,
+          "type": "Int"
+        },
+        {
+          "label": "GiftCodeExpired",
+          "key": "E46438147",
+          "value": 1004,
+          "type": "Int"
+        }
+      ],
+      "isCustom": true,
+      "isDirty": false
+    }
+  },
+  "enumNameMap": {
+    "RequestParameter": "CustomEnum15662370",
+    "CustomStatusCode": "CustomEnum45648656"
+  },
   "children": []
 }
-//"{FE:{"v":"1.17.4335043","c":{"FF":5001},"s":100}
+//"{FE:{"v":"1.18.4494106","c":{"FF":5001},"s":100}
