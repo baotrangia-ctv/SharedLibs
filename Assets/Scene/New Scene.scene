@@ -98,6 +98,130 @@
       "aoiSetting": 0
     },
     {
+      "_entityName": "FE_54_XYL_PHOTOFILTER_ENTITY_NAME",
+      "_tag": {
+        "type": "PhotoFilterEntity",
+        "resourceId": "Primitive/Empty"
+      },
+      "_entityId": "zd2Z2Ff9",
+      "children": [],
+      "prefabVariant": null,
+      "activeValue": {
+        "selfValue": true,
+        "valueTag": "activeValue"
+      },
+      "unlockedValue": null,
+      "editorLockValue": false,
+      "editorVisibleValue": true,
+      "position": {
+        "x": 0,
+        "y": 100,
+        "z": 0
+      },
+      "scale": {
+        "x": 1,
+        "y": 1,
+        "z": 1
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "BTPath": [
+        null
+      ],
+      "visible": true,
+      "VisibilityLayer": 0,
+      "modelOptimization": 0,
+      "streamingLayer": "",
+      "attributes": [
+        2,
+        4
+      ],
+      "isTrigger": false,
+      "collidable": true,
+      "physicalLayer": 0,
+      "aoiSetting": 0,
+      "initialTypes": {},
+      "componentList": [],
+      "FilterType": -1,
+      "Common": {
+        "Brightness": 1,
+        "Contrast": 1,
+        "Saturation": 1
+      },
+      "Comic": {
+        "Threshold": 0.332,
+        "Range": 0.015,
+        "FlashSpeed": 10,
+        "LineIntensity": 2,
+        "LineSize": 1,
+        "PencilSize": 0.0006,
+        "PencilCorrection": 0.3,
+        "PencilColor": {
+          "r": 0,
+          "g": 0,
+          "b": 0,
+          "a": 1
+        }
+      },
+      "Drawing": {
+        "PencilSize": 0.0006,
+        "PencilCorrection": 0.5,
+        "PencilColor": {
+          "r": 53,
+          "g": 37,
+          "b": 30,
+          "a": 1
+        },
+        "PaperColor": {
+          "r": 177,
+          "g": 127,
+          "b": 80,
+          "a": 0
+        },
+        "CornerLose": 0.5,
+        "PaperTex": null
+      },
+      "Pixel": {
+        "Pixelisation": 200,
+        "ColorOffset": {
+          "r": 255,
+          "g": 205,
+          "b": 136,
+          "a": 0.2
+        }
+      },
+      "RGBSplit": {
+        "SplitOffset": 0.005
+      },
+      "GoldenAge": {
+        "Intensity": 1,
+        "Warmth": 0
+      },
+      "Cyberpunk": {
+        "EdgeIntensity": 1,
+        "EdgeSize": 0.0013,
+        "EdgeSensitivity": 0.15,
+        "GlitchInterval": 3,
+        "GlitchDuration": 0.1,
+        "EdgeColor1": {
+          "r": 255,
+          "g": 0,
+          "b": 255,
+          "a": 1
+        },
+        "EdgeColor2": {
+          "r": 51,
+          "g": 255,
+          "b": 255,
+          "a": 1
+        },
+        "EdgeNoiseTex": null
+      }
+    },
+    {
       "_entityName": "WS_Plane",
       "_tag": {
         "type": "UGCSceneEntity",
@@ -110,7 +234,10 @@
         "selfValue": true,
         "valueTag": "activeValue"
       },
-      "unlockedValue": null,
+      "unlockedValue": {
+        "selfValue": true,
+        "valueTag": "unlockedValue"
+      },
       "editorLockValue": false,
       "editorVisibleValue": true,
       "position": {
@@ -269,4 +396,4 @@
     }
   }
 }
-//"{FE:{"v":"1.17.4335043","c":{"FF":5001},"s":100}
+//"{FE:{"v":"1.18.4494106","c":{"FF":5001},"s":100}
