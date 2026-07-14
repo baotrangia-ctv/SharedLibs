@@ -1,0 +1,384 @@
+import "Map.fcc" as Map
+import "List.fcc" as List
+import "Math.fcc" as Math
+import "Convert.fcc" as Convert
+import "Strings.fcc" as Strings
+import "StdLibrary.fcc" as StdLib
+import "EditorGenLib.fcc" as EditorLib
+
+static graph DataUtils {
+    // Utility: Converts List<int> to comma-separated string
+    func ListIntToString(list List<int>) string {
+        if list == nil || List.Length(list) == 0 {
+            return ""
+        }
+        var result string = Convert.NumToString(list[0], "")
+        for i = 1, List.Length(list), 1 {
+            result = result + "," + Convert.NumToString(list[i], "")
+        }
+        return result
+    }
+
+    // Utility: Converts comma-separated string to List<int>
+    func StringToListInt(s string) List<int> {
+        var result List<int> = List<int>{}
+        if s == nil || s == "" {
+            return result
+        }
+        var pos int = 0
+        var len int = Strings.Length(s)
+        for i = 0, len + 1, 1 {
+            if i == len || Sub(s, i, 1) == "," {
+                var part string = Sub(s, pos, i - pos)
+                StringToInt(part, out var value, out var isSuccess)
+                if isSuccess {
+                    Append(result, value)
+                }
+                pos = i + 1
+            }
+        }
+        return result
+    }
+
+    // Utility: Converts List<List<int>> to string, e.g. 1,2,3;4,5,6
+    func ListListIntToString(list List<List<int>>) string {
+        if list == nil || List.Length(list) == 0 {
+            return ""
+        }
+        var result string = ListIntToString(list[0])
+        for i = 1, List.Length(list), 1 {
+            result = result + ";" + ListIntToString(list[i])
+        }
+        return result
+    }
+
+    // Utility: Converts string to List<List<int>>, e.g. 1,2,3;4,5,6
+    func StringToListListInt(s string) List<List<int>> {
+        // LogInfo("[DataUtils] StringToListListInt(" + s + ")")
+
+        var result List<List<int>> = List<List<int>>{}
+        if s == nil || s == "" {
+            return result
+        }
+
+        // var pos int = 0
+        // var len int = Strings.Length(s)
+        // for i = 0, len + 1, 1 {
+        //     if i == len || Sub(s, i, 1) == ";" {
+        //         var part string = Sub(s, pos, i - pos)
+        //         Append(result, StringToListInt(part))
+        //         pos = i + 1
+        //     }
+        //     LogInfo("[DataUtils][StringToListListInt]: part = " + result[List.Length(result) - 1])
+        // }
+        var splitString List<string> = Split(s, ";")
+        for key, part in  splitString {
+            Append(result, StringToListIntV2(part, ","))
+        }
+
+        // for key, part in result {
+        //     LogInfo("[DataUtils][StringToListListInt]: part[" + key + "] = " + ToString(part))
+        // }
+
+        return result
+    }
+
+    // Utility: Converts string to List<string>, e.g. 1,2,3;4,5,6 to '123' and '456'
+    func StringToListString(s string) List<string> {
+        var result List<string> = List<string>{}
+        if s == nil || s == "" {
+            return result
+        }
+        var pos int = 0
+        var len int = Strings.Length(s)
+        for i = 0, len + 1, 1 {
+            if i == len || Sub(s, i, 1) == ";" {
+                var part string = Sub(s, pos, i - pos)
+                Append(result, part)
+                pos = i + 1
+            }
+        }
+        return result
+    }
+
+    // Utility: Converts List<int> to string, e.g. {123,456} to '123,456'
+    func ListIntToStringUseComma(list List<int>, comma string) string {
+        if list == nil || List.Length(list) == 0 {
+            return ""
+        }
+        var result string = Convert.NumToString(list[0], "")
+        for i = 1, List.Length(list), 1 {
+            result = result + comma + Convert.NumToString(list[i], "")
+        }
+        return result
+    }
+
+    func StringToListStringV2(s string, comma string) List<string> {
+        if s == nil || s == "" {
+            return List<string>{}
+        }
+        var result = Split(s, comma)
+        return result
+    }
+
+    func StringToListIntV2(data string, comma string) List<int> {
+        var result List<int> = List<int>{}
+        if data == nil || data == "" {
+            return result
+        }
+        var resultString = Split(data, comma)
+        for (key, r in resultString) {
+            Append(result, StringToIntValue(r, out var succ))
+        }
+        return result
+    }
+
+    func StringToListFloat(data string, comma string)List<float> {
+        var result List<int> = List<int>{}
+        if data == nil || data == "" {
+            return result
+        }
+        var resultString = Split(data, comma)
+        for (key, p in resultString) {
+            StringToFloat(p, out var weight, out var succ)
+            if (succ) {
+                Append(result, weight)
+            }
+        }
+        return result
+    }
+
+    func StringToKeyValue(data string) List<string> {
+        return Split(data, ":")
+    }
+
+    func StringToIntValue(data string, out var isSuccess bool) int {
+        StringToInt(data, out var number, out var succ)
+        isSuccess = succ
+        return number
+    }
+
+    func KeyValueToString(key string, value string)string {
+        return key + ":" + value
+    }
+
+    func ListStringToStringUseComma(list List<string>, comma string)string {
+        if list == nil || List.Length(list) == 0 {
+            return ""
+        }
+        var result string = list[0]
+        for i = 1, List.Length(list), 1 {
+            result = result + comma + list[i]
+        }
+
+        return result
+    }
+
+    // Utility: Converts Json string to Map<string, string>, e.g. "key1:value1;key2:value2" to {"key1": "value1", "key2": "value2"}
+    func JsonStringToKeyValue(json string) Map<string, string> {
+        var result Map<string, string> = Map<string, string>{}
+        if json == nil || json == "" {
+            return result
+        }
+
+        var jsonObject List<string> = Strings.Split(json, ";")
+        for key, value in jsonObject {
+            if value == nil || value == "" {
+                continue
+            }
+
+            var keyValue List<string> = Strings.Split(value, ":")
+            result[keyValue[0]] = keyValue[1]
+        }
+
+        return result
+    }
+
+    // Utility: Converts Json string to List<Map<string, string>>, e.g. "{key1:valueA;key2:valueB};{key1:valueC;key2:valueD}" to [{"key1": "valueA", "key2": "valueB"}, {"key1": "valueC", "key2": "valueD"}]
+    func JsonStringToListKeyValue(json string) List<Map<string, string>> {
+        var result List<Map<string, string>> = List<Map<string, string>>{}
+        if json == nil || json == "" {
+            return result
+        }
+
+        // Remove leading '{' and trailing '}' if present
+        var cleanJson string = json
+        var len int = Strings.Length(cleanJson)
+        if len > 0 && Strings.Sub(cleanJson, 0, 1) == "{" {
+            cleanJson = Strings.Sub(cleanJson, 1, len - 1)
+            len = len - 1
+        }
+        if len > 0 && Strings.Sub(cleanJson, len - 1, 1) == "}" {
+            cleanJson = Strings.Sub(cleanJson, 0, len - 1)
+        }
+
+        // Split "key1:valueA;key2:valueB};{key1:valueC;key2:valueD" by "};{"
+        var jsonObjects List<string> = Strings.Split(cleanJson, "};{")
+        for key, jsonObject in jsonObjects {
+            // Parse each string into a Map
+            var map Map<string, string> = JsonStringToKeyValue(jsonObject)
+            List.Append(result, map)
+        }
+        return result
+    }
+
+    func ListKeyValueToJsonString(listKeyValue List<Map<string, string>>) string {
+        var jsonObjects List<string> = List<string>{}
+        for _, keyValue in listKeyValue {
+            var result string = "{"
+
+            for key, value in keyValue {
+                result = result + KeyValueToString(key, value) + ";"
+            }
+
+            var len int = Strings.Length(result)
+            if len > 0 && Strings.Sub(result, len - 1, 1) == ";" {
+                result = Strings.Sub(result, 0, len - 1)
+            }
+
+            result = result + "}"
+
+            List.Append(jsonObjects, result)
+        }
+
+        var jsonData string = ""
+        for key, jsonObject in jsonObjects {
+            jsonData = jsonData + jsonObject + ";"
+        }
+
+        var len int = Strings.Length(jsonData)
+        if len > 0 && Strings.Sub(jsonData, len - 1, 1) == ";" {
+            jsonData = Strings.Sub(jsonData, 0, len - 1)
+        }
+
+        return jsonData
+    }
+
+    // Support extract json has json
+    func JsonStringToListKeyValueV2(json string) List<Map<string, string>> {
+        var result List<Map<string, string>> = List<Map<string, string>>{}
+
+        if json == nil || json == "" {
+            return result
+        }
+
+        var jsonObjects List<string> = SplitTopLevelObjects(json)
+        for _, jsonObject in jsonObjects {
+            List.Append(result, JsonStringToKeyValueV3(jsonObject))
+        }
+
+        return result
+    }
+
+    func SplitTopLevelObjects(input string) List<string> {
+        var result List<string> = List<string>{}
+
+        var current string = ""
+        var braceDepth int = 0
+
+        var len int = Strings.Length(input)
+
+        for i = 0, len, 1 {
+            var ch string = Strings.Sub(input, i, 1)
+
+            current = current + ch
+
+            if ch == "{" {
+                braceDepth = braceDepth + 1
+            } else if ch == "}"{
+                braceDepth = braceDepth - 1
+
+                if braceDepth == 0 {
+                    List.Append(result, current)
+                    current = ""
+                }
+            }
+        }
+
+        return result
+    }
+
+    func JsonStringToKeyValueV3(json string) Map<string, string> {
+        var result Map<string, string> = Map<string, string>{}
+
+        if json == nil || json == "" {
+            return result
+        }
+
+        while Strings.Sub(json, 0, 1) == ";" {
+            json = Strings.Sub(json, 1, Strings.Length(json) - 1)
+        }
+
+        // remove outer {}
+        var len int = Strings.Length(json)
+
+        if len >= 2 && Strings.Sub(json, 0, 1) == "{" && Strings.Sub(json, len - 1, 1) == "}" {
+            json = Strings.Sub(json, 1, len - 2)
+        }
+
+        var current string = ""
+
+        var braceDepth int = 0
+        var bracketDepth int = 0
+
+        var pairs List<string> = List<string>{}
+
+        len = Strings.Length(json)
+
+        for i = 0, len, 1 {
+
+            var ch string = Strings.Sub(json, i, 1)
+
+            if ch == "{" {
+                braceDepth = braceDepth + 1
+            } else if ch == "}"{
+                braceDepth = Math.Max(0, braceDepth - 1) as int
+            } else if ch == "["{
+                bracketDepth = bracketDepth + 1
+            } else if ch == "]"{
+                bracketDepth = Math.Max(0, bracketDepth - 1) as int
+            }
+
+            if ch == ";" && braceDepth == 0 && bracketDepth == 0 {
+                List.Append(pairs, current)
+                current = ""
+            } else {
+                current = current + ch
+            }
+        }
+
+        if current != "" {
+            List.Append(pairs, current)
+        }
+
+        // parse key/value
+        for _, pair in pairs {
+
+            var colonIndex int = -1
+
+            var pairLen int = Strings.Length(pair)
+
+            for j = 0, pairLen, 1 {
+
+                if Strings.Sub(pair, j, 1) == ":" {
+                    colonIndex = j
+                    break
+                }
+            }
+
+            if colonIndex < 0 {
+                continue
+            }
+
+            var key string =
+                Strings.Sub(pair, 0, colonIndex)
+
+            var value string =
+                Strings.Sub(pair, colonIndex + 1, pairLen - colonIndex - 1)
+
+            result[key] = value
+        }
+
+        return result
+    }
+}
