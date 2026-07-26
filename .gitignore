@@ -3,3 +3,4 @@ Cache/
 Libraries/
 Temp/
 *.lock
+.codex/project-paths.json

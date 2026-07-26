@@ -1,0 +1,16 @@
+{
+  "projects": {
+    "steal_a_pet": {
+      "path": "../StealAPet",
+      "access": "read-only"
+    },
+    "shared_libs": {
+      "path": ".",
+      "access": "read-write"
+    },
+    "consumer_project": {
+      "path": "",
+      "access": "read-write"
+    }
+  }
+}
