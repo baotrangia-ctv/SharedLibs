@@ -1,0 +1,462 @@
+import "Map.fcc" as Map
+import "List.fcc" as List
+import "Database.fcc" as Database
+import "StdLibrary.fcc" as StdLib
+
+import "../CoreLib/DatabaseController.fcg" as DatabaseController
+import "../Configs/MailsDefinitions.fcg" as MailsDefinitions
+import "../Configs/MailsConfigs.fcg" as MailsConfigs
+import "../Utils/DataUtils.fcg" as DataUtils
+
+static graph MailsManager {
+    _PlayerMails Map<UUID, List<Map<string, object>>>
+    _PlayerUsedGiftIds Map<UUID, List<int>>
+    _IsClaimingMail Map<UUID, bool>
+
+    event OnAwake() {
+        Init()
+        DatabaseController.RegisterDatabase(MailsDefinitions.DATABASE_TYPE)
+    }
+
+    func Init() {
+        if _PlayerMails != nil {
+            return
+        }
+
+        _PlayerMails = Map<UUID, List<Map<string, object>>>{}
+        _PlayerUsedGiftIds = Map<UUID, List<int>>{}
+        _IsClaimingMail = Map<UUID, bool>{}
+    }
+
+    func InitPlayerMails(playerUID UUID) {
+        if _PlayerMails[playerUID] != nil {
+            return
+        }
+
+        _PlayerMails[playerUID] = List<Map<string, object>>{}
+        _PlayerUsedGiftIds[playerUID] = List<int>{}
+        _IsClaimingMail[playerUID] = false
+    }
+
+    event OnDatabaseLoad(playerUID UUID, databaseType string) {
+        if databaseType == MailsDefinitions.DATABASE_TYPE {
+            LoadMailsDatabase(playerUID)
+        }
+    }
+
+    async func LoadMailsDatabase(playerUID UUID) {
+        InitPlayerMails(playerUID)
+
+        wait ReadFromDataStore(
+            MailsDefinitions.SHEET_GIFT_HAS_USE,
+            playerUID,
+            MailsDefinitions.KEY_GIFT_HAS_USE,
+            out var rawUsedGiftIds,
+            MailsDefinitions.MAP_CODE,
+            out var usedGiftStatus,
+        )
+
+        if usedGiftStatus != StatusCode.NoError {
+            wait DatabaseController.RetryLoadData(
+                MailsDefinitions.SHEET_GIFT_HAS_USE,
+                playerUID,
+                MailsDefinitions.KEY_GIFT_HAS_USE,
+                out rawUsedGiftIds,
+                MailsDefinitions.MAP_CODE,
+                out usedGiftStatus,
+            )
+        }
+
+        if rawUsedGiftIds == nil {
+            _PlayerUsedGiftIds[playerUID] = List<int>{}
+        } else {
+            _PlayerUsedGiftIds[playerUID] = rawUsedGiftIds as List<int>
+        }
+
+        wait ReadFromDataStoreBatch(
+            MailsDefinitions.SHEET_MAILS,
+            List<UUID>{playerUID, playerUID},
+            List<string>{MailsDefinitions.KEY_CURRENT_MAILS, MailsDefinitions.KEY_PENDING_MAILS},
+            out var results,
+            MailsDefinitions.MAP_CODE,
+            out var statusCodes,
+        )
+
+        var rawCurrentMails object = results[0]
+        var rawPendingMails object = results[1]
+
+        if statusCodes[0] != StatusCode.NoError {
+            wait DatabaseController.RetryLoadData(
+                MailsDefinitions.SHEET_MAILS,
+                playerUID,
+                MailsDefinitions.KEY_CURRENT_MAILS,
+                out rawCurrentMails,
+                MailsDefinitions.MAP_CODE,
+                out var retryCurrentStatus,
+            )
+        }
+
+        if statusCodes[1] != StatusCode.NoError {
+            wait DatabaseController.RetryLoadData(
+                MailsDefinitions.SHEET_MAILS,
+                playerUID,
+                MailsDefinitions.KEY_PENDING_MAILS,
+                out rawPendingMails,
+                MailsDefinitions.MAP_CODE,
+                out var retryPendingStatus,
+            )
+        }
+
+        CombinePlayerMails(
+            playerUID,
+            ExtractMailsData(rawCurrentMails as string),
+            ExtractMailsData(rawPendingMails as string),
+        )
+
+        wait SavePlayerMails(playerUID, MailsDefinitions.KEY_PENDING_MAILS, "")
+        DatabaseController.SetDatabaseReady(playerUID, MailsDefinitions.DATABASE_TYPE, true)
+    }
+
+    event OnDatabaseSave(playerUID UUID, databaseType string) {
+        if databaseType == MailsDefinitions.DATABASE_TYPE {
+            wait SaveMailsDatabase(playerUID)
+        }
+    }
+
+    async func SaveMailsDatabase(playerUID UUID) {
+        wait WriteToDataStoreV2(
+            MailsDefinitions.SHEET_GIFT_HAS_USE,
+            playerUID,
+            MailsDefinitions.KEY_GIFT_HAS_USE,
+            _PlayerUsedGiftIds[playerUID],
+            MailsDefinitions.MAP_CODE,
+            out var usedGiftStatus,
+        )
+
+        wait SavePlayerMails(playerUID, MailsDefinitions.KEY_CURRENT_MAILS, GetPlayerMailDataJson(playerUID))
+        DatabaseController.SetDatabaseSaved(playerUID, MailsDefinitions.DATABASE_TYPE, true)
+
+        WaitForMillisecond(3000)
+        ClearData(playerUID)
+    }
+
+    async func SavePlayerMails(playerUID UUID, mailKey string, mailData string) {
+        wait WriteToDataStoreV2(
+            MailsDefinitions.SHEET_MAILS,
+            playerUID,
+            mailKey,
+            mailData,
+            MailsDefinitions.MAP_CODE,
+            out var statusCode,
+        )
+    }
+
+    func ClearData(playerUID UUID) {
+        Map.Remove(_PlayerMails, playerUID)
+        Map.Remove(_PlayerUsedGiftIds, playerUID)
+        Map.Remove(_IsClaimingMail, playerUID)
+    }
+
+    func RequestReceiveMail(payload Map<string, object>, out var statusCode string) {
+        CheckConditionReceiveMail(payload, out statusCode)
+        if statusCode != MailsDefinitions.STATUS_NO_ERROR {
+            return
+        }
+
+        ProcessReceiveMail(payload)
+    }
+
+    func CheckConditionReceiveMail(payload Map<string, object>, out var statusCode string) {
+        var playerUID UUID = payload[MailsDefinitions.PAYLOAD_PLAYER_UID] as UUID
+        if !Map.ContainKey(_PlayerMails, playerUID) {
+            statusCode = MailsDefinitions.STATUS_PLAYER_DISCONNECT
+            return
+        }
+
+        if IsMaxMails(playerUID) {
+            statusCode = MailsDefinitions.STATUS_PLAYER_FULL_MAIL
+            return
+        }
+
+        var isConfigMail bool = payload[MailsDefinitions.PAYLOAD_IS_CONFIG_MAIL] as bool
+        if isConfigMail {
+            var giftId int = payload[MailsDefinitions.PAYLOAD_MAIL_ID] as int
+            if !MailsConfigs.IsValidGiftId(giftId) {
+                statusCode = MailsDefinitions.STATUS_GIFT_CODE_INVALID
+                return
+            }
+
+            if HasUsedGiftcode(playerUID, giftId) && !MailsConfigs.GetGiftReuseById(giftId) {
+                statusCode = MailsDefinitions.STATUS_GIFT_CODE_HAS_USE
+                return
+            }
+
+            if !MailsConfigs.IsGiftWindowValid(giftId, GetServerTimestamp()) {
+                statusCode = MailsDefinitions.STATUS_GIFT_CODE_EXPIRED
+                return
+            }
+        }
+
+        statusCode = MailsDefinitions.STATUS_NO_ERROR
+    }
+
+    func ProcessReceiveMail(payload Map<string, object>) {
+        var playerUID UUID = payload[MailsDefinitions.PAYLOAD_PLAYER_UID] as UUID
+        var giftId int = payload[MailsDefinitions.PAYLOAD_MAIL_ID] as int
+        var mailDetails Map<string, object> = Map<string, object>{
+            MailsDefinitions.DATA_MAIL_IS_CONFIG: payload[MailsDefinitions.PAYLOAD_IS_CONFIG_MAIL],
+            MailsDefinitions.DATA_MAIL_ID: giftId,
+            MailsDefinitions.DATA_MAIL_CREATED_AT: GetServerTimestamp(),
+            MailsDefinitions.DATA_MAIL_REWARD_TYPES: payload[MailsDefinitions.PAYLOAD_REWARD_TYPES],
+            MailsDefinitions.DATA_MAIL_REWARD_VALUES: payload[MailsDefinitions.PAYLOAD_REWARD_VALUES],
+            MailsDefinitions.DATA_MAIL_REWARD_AMOUNTS: payload[MailsDefinitions.PAYLOAD_REWARD_AMOUNTS],
+        }
+
+        AddPlayerUsedGiftcode(playerUID, giftId)
+        AddPlayerMail(playerUID, mailDetails)
+    }
+
+    func RequestClaimMail(payload Map<string, object>, out var statusCode string, out var claimedMail Map<string, object>) {
+        CheckConditionClaimMail(payload, out statusCode)
+        if statusCode != MailsDefinitions.STATUS_NO_ERROR {
+            claimedMail = nil
+            return
+        }
+
+        ProcessClaimMail(payload, out claimedMail)
+        statusCode = MailsDefinitions.STATUS_NO_ERROR
+    }
+
+    func CheckConditionClaimMail(payload Map<string, object>, out var statusCode string) {
+        var playerUID UUID = payload[MailsDefinitions.PAYLOAD_PLAYER_UID] as UUID
+        var mailIndex int = payload[MailsDefinitions.PAYLOAD_MAIL_INDEX] as int
+
+        if !Map.ContainKey(_PlayerMails, playerUID) {
+            statusCode = MailsDefinitions.STATUS_PLAYER_DISCONNECT
+            return
+        }
+
+        if _IsClaimingMail[playerUID] {
+            statusCode = MailsDefinitions.STATUS_ACTION_TOO_FAST
+            return
+        }
+
+        if !IsValidMailIndex(playerUID, mailIndex) {
+            statusCode = MailsDefinitions.STATUS_INVALID_VALUE
+            return
+        }
+
+        statusCode = MailsDefinitions.STATUS_NO_ERROR
+    }
+
+    func ProcessClaimMail(payload Map<string, object>, out var claimedMail Map<string, object>) {
+        var playerUID UUID = payload[MailsDefinitions.PAYLOAD_PLAYER_UID] as UUID
+        var mailIndex int = payload[MailsDefinitions.PAYLOAD_MAIL_INDEX] as int
+
+        _IsClaimingMail[playerUID] = true
+        claimedMail = GetPlayerMailByIndex(playerUID, mailIndex)
+        RemovePlayerMail(playerUID, mailIndex)
+        _IsClaimingMail[playerUID] = false
+    }
+
+    func GetPlayerMails(playerUID UUID) List<Map<string, object>> {
+        return List.Clone(_PlayerMails[playerUID]) as List<Map<string, object>>
+    }
+
+    func GetPlayerMailByIndex(playerUID UUID, index int) Map<string, object> {
+        return _PlayerMails[playerUID][index] as Map<string, object>
+    }
+
+    func GetPlayerMailsCount(playerUID UUID) int {
+        return List.Length(_PlayerMails[playerUID])
+    }
+
+    func IsHavingMail(playerUID UUID) bool {
+        return GetPlayerMailsCount(playerUID) > 0
+    }
+
+    func AddPlayerMail(playerUID UUID, mailDetails Map<string, object>) {
+        if !IsValidDate(mailDetails[MailsDefinitions.DATA_MAIL_CREATED_AT] as int) {
+            return
+        }
+
+        List.Insert(_PlayerMails[playerUID], 0, CleanMailData(mailDetails))
+    }
+
+    func RemovePlayerMail(playerUID UUID, mailIndex int) {
+        List.RemoveAt(_PlayerMails[playerUID], mailIndex)
+    }
+
+    func GetExpireDatesLeft(playerUID UUID, mailIndex int) int {
+        var mail Map<string, object> = GetPlayerMailByIndex(playerUID, mailIndex)
+        var createdAt int = mail[MailsDefinitions.DATA_MAIL_CREATED_AT] as int
+        var elapsedDays int = (GetServerTimestamp() - createdAt) / MailsDefinitions.SECONDS_PER_DAY
+
+        return MailsDefinitions.MAX_VALID_DAYS - elapsedDays
+    }
+
+    func IsValidMailIndex(playerUID UUID, mailIndex int) bool {
+        return mailIndex >= 0 && mailIndex < GetPlayerMailsCount(playerUID)
+    }
+
+    func IsMaxMails(playerUID UUID) bool {
+        return GetPlayerMailsCount(playerUID) >= MailsDefinitions.MAX_MAILS
+    }
+
+    func HasUsedGiftcode(playerUID UUID, giftId int) bool {
+        return List.Contain(_PlayerUsedGiftIds[playerUID], giftId)
+    }
+
+    func AddPlayerUsedGiftcode(playerUID UUID, giftId int) {
+        if giftId <= 0 || List.Contain(_PlayerUsedGiftIds[playerUID], giftId) {
+            return
+        }
+
+        if MailsConfigs.IsValidGiftId(giftId) && MailsConfigs.GetGiftReuseById(giftId) {
+            return
+        }
+
+        List.Append(_PlayerUsedGiftIds[playerUID], giftId)
+    }
+
+    func CombinePlayerMails(playerUID UUID, currentMails List<Map<string, object>>, pendingMails List<Map<string, object>>) {
+        InitPlayerMails(playerUID)
+        _PlayerMails[playerUID] = List<Map<string, object>>{}
+
+        for i = List.Length(currentMails) - 1, -1, -1 {
+            AddPlayerMail(playerUID, currentMails[i])
+        }
+
+        for i = List.Length(pendingMails) - 1, -1, -1 {
+            AddPlayerMail(playerUID, pendingMails[i])
+        }
+    }
+
+    func ExtractMailsData(rawData string) List<Map<string, object>> {
+        var mails List<Map<string, object>> = List<Map<string, object>>{}
+        var jsonData List<Map<string, string>> = DataUtils.JsonStringToListKeyValueV2(rawData)
+
+        for _, data in jsonData {
+            StringToInt(data[MailsDefinitions.DATA_MAIL_ID], out var mailId, out var okMailId)
+            StringToInt(data[MailsDefinitions.DATA_MAIL_CREATED_AT], out var createdAt, out var okCreatedAt)
+            StringToInt(data[MailsDefinitions.DATA_MAIL_IS_CONFIG], out var isConfigInt, out var okIsConfig)
+
+            if !okMailId || !okCreatedAt || !okIsConfig {
+                continue
+            }
+
+            var mail Map<string, object> = Map<string, object>{
+                MailsDefinitions.DATA_MAIL_IS_CONFIG: isConfigInt == 1,
+                MailsDefinitions.DATA_MAIL_ID: mailId,
+                MailsDefinitions.DATA_MAIL_CREATED_AT: createdAt,
+            }
+
+            if isConfigInt == 1 {
+                mail = CleanMailData(mail)
+            } else {
+                mail[MailsDefinitions.DATA_MAIL_REWARD_TYPES] = DataUtils.StringToListStringV2(data[MailsDefinitions.DATA_MAIL_REWARD_TYPES], ",")
+                mail[MailsDefinitions.DATA_MAIL_REWARD_VALUES] = ExtractRewardValues(data[MailsDefinitions.DATA_MAIL_REWARD_VALUES])
+                mail[MailsDefinitions.DATA_MAIL_REWARD_AMOUNTS] = DataUtils.StringToListIntV2(data[MailsDefinitions.DATA_MAIL_REWARD_AMOUNTS], ",")
+            }
+
+            List.Append(mails, mail)
+        }
+
+        return mails
+    }
+
+    func ExtractRewardValues(rawData string) List<Map<string, object>> {
+        var result List<Map<string, object>> = List<Map<string, object>>{}
+        var jsonData List<Map<string, string>> = DataUtils.JsonStringToListKeyValueV2(rawData)
+
+        for _, data in jsonData {
+            var rewardValue Map<string, object> = Map<string, object>{}
+            for key, value in data {
+                rewardValue[key] = value
+            }
+            List.Append(result, rewardValue)
+        }
+
+        return result
+    }
+
+    func GetPlayerMailDataJson(playerUID UUID) string {
+        var jsonData List<Map<string, string>> = List<Map<string, string>>{}
+
+        for _, mailData in GetPlayerMails(playerUID) {
+            var data Map<string, string> = Map<string, string>{}
+            data[MailsDefinitions.DATA_MAIL_IS_CONFIG] = "0"
+            if mailData[MailsDefinitions.DATA_MAIL_IS_CONFIG] == true {
+                data[MailsDefinitions.DATA_MAIL_IS_CONFIG] = "1"
+            }
+
+            data[MailsDefinitions.DATA_MAIL_ID] = mailData[MailsDefinitions.DATA_MAIL_ID]
+            data[MailsDefinitions.DATA_MAIL_CREATED_AT] = mailData[MailsDefinitions.DATA_MAIL_CREATED_AT]
+
+            if mailData[MailsDefinitions.DATA_MAIL_IS_CONFIG] == false {
+                data[MailsDefinitions.DATA_MAIL_REWARD_TYPES] = DataUtils.ListStringToStringUseComma(mailData[MailsDefinitions.DATA_MAIL_REWARD_TYPES] as List<string>, ",")
+                data[MailsDefinitions.DATA_MAIL_REWARD_VALUES] = DataUtils.ListKeyValueToJsonString(
+                    NormalizeRewardValues(mailData[MailsDefinitions.DATA_MAIL_REWARD_VALUES] as List<Map<string, object>>)
+                )
+                data[MailsDefinitions.DATA_MAIL_REWARD_AMOUNTS] = DataUtils.ListIntToString(mailData[MailsDefinitions.DATA_MAIL_REWARD_AMOUNTS] as List<int>)
+            }
+
+            List.Append(jsonData, data)
+        }
+
+        return DataUtils.ListKeyValueToJsonString(jsonData)
+    }
+
+    func NormalizeRewardValues(rewardValues List<Map<string, object>>) List<Map<string, string>> {
+        var result List<Map<string, string>> = List<Map<string, string>>{}
+
+        for _, rewardValue in rewardValues {
+            var normalized Map<string, string> = Map<string, string>{}
+            for key, value in rewardValue {
+                normalized[key] = value
+            }
+            List.Append(result, normalized)
+        }
+
+        return result
+    }
+
+    func CleanMailData(mailDetails Map<string, object>) Map<string, object> {
+        var result Map<string, object> = Map<string, object>{
+            MailsDefinitions.DATA_MAIL_IS_CONFIG: mailDetails[MailsDefinitions.DATA_MAIL_IS_CONFIG],
+            MailsDefinitions.DATA_MAIL_ID: mailDetails[MailsDefinitions.DATA_MAIL_ID],
+            MailsDefinitions.DATA_MAIL_CREATED_AT: mailDetails[MailsDefinitions.DATA_MAIL_CREATED_AT],
+            MailsDefinitions.DATA_MAIL_REWARD_TYPES: mailDetails[MailsDefinitions.DATA_MAIL_REWARD_TYPES],
+            MailsDefinitions.DATA_MAIL_REWARD_VALUES: mailDetails[MailsDefinitions.DATA_MAIL_REWARD_VALUES],
+            MailsDefinitions.DATA_MAIL_REWARD_AMOUNTS: mailDetails[MailsDefinitions.DATA_MAIL_REWARD_AMOUNTS],
+        }
+
+        if mailDetails[MailsDefinitions.DATA_MAIL_IS_CONFIG] == true {
+            var giftId int = mailDetails[MailsDefinitions.DATA_MAIL_ID] as int
+            MailsConfigs.TryBuildGiftRewards(
+                giftId,
+                out var rewardTypes,
+                out var rewardValues,
+                out var rewardAmounts,
+                out var ok,
+            )
+
+            if ok {
+                result[MailsDefinitions.DATA_MAIL_REWARD_TYPES] = rewardTypes
+                result[MailsDefinitions.DATA_MAIL_REWARD_VALUES] = rewardValues
+                result[MailsDefinitions.DATA_MAIL_REWARD_AMOUNTS] = rewardAmounts
+            } else {
+                result[MailsDefinitions.DATA_MAIL_REWARD_TYPES] = List<string>{}
+                result[MailsDefinitions.DATA_MAIL_REWARD_VALUES] = List<Map<string, object>>{}
+                result[MailsDefinitions.DATA_MAIL_REWARD_AMOUNTS] = List<object>{}
+            }
+        }
+
+        return result
+    }
+
+    func IsValidDate(receiveTimestamp int) bool {
+        var elapsedDays int = (GetServerTimestamp() - receiveTimestamp) / MailsDefinitions.SECONDS_PER_DAY
+        return elapsedDays < MailsDefinitions.MAX_VALID_DAYS
+    }
+}

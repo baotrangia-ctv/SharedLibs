@@ -1,0 +1,156 @@
+import "Map.fcc" as Map
+import "List.fcc" as List
+import "StdLibrary.fcc" as StdLib
+
+static graph MailsConfigs {
+    _MailDetailId2Title Map<int, string>
+    _MailDetailId2Content Map<int, string>
+
+    _GiftId2Code Map<int, string>
+    _GiftId2Name Map<int, string>
+    _GiftId2Start Map<int, int>
+    _GiftId2End Map<int, int>
+    _GiftId2Reuse Map<int, bool>
+    _GiftId2RewardTypes Map<int, List<string>>
+    _GiftId2RewardValues Map<int, List<Map<string, object>>>
+    _GiftId2RewardAmounts Map<int, List<object>>
+
+    event OnAwake() {
+        Init()
+        LoadDefaultMailDetails()
+    }
+
+    func Init() {
+        if _MailDetailId2Title != nil {
+            return
+        }
+
+        _MailDetailId2Title = Map<int, string>{}
+        _MailDetailId2Content = Map<int, string>{}
+
+        _GiftId2Code = Map<int, string>{}
+        _GiftId2Name = Map<int, string>{}
+        _GiftId2Start = Map<int, int>{}
+        _GiftId2End = Map<int, int>{}
+        _GiftId2Reuse = Map<int, bool>{}
+        _GiftId2RewardTypes = Map<int, List<string>>{}
+        _GiftId2RewardValues = Map<int, List<Map<string, object>>>{}
+        _GiftId2RewardAmounts = Map<int, List<object>>{}
+    }
+
+    // SharedLibs does not yet have the source project's generated CSV resource enums,
+    // so we bootstrap the readable MailDetails.csv rows directly and keep the copied CSV
+    // as repository evidence for consumer-side validation.
+    func LoadDefaultMailDetails() {
+        if Map.Length(_MailDetailId2Title) > 0 {
+            return
+        }
+
+        RegisterMailDetail(1, "HUD_MAIL_TITLE_SYSTEM", "HUD_MAIL_CONTENT_SYSTEM")
+        RegisterMailDetail(2, "HUD_MAIL_TITLE_LOGIN", "HUD_MAIL_CONTENT_LOGIN")
+        RegisterMailDetail(3, "HUD_MAIL_TITLE_EVENT", "HUD_MAIL_CONTENT_EVENT")
+        RegisterMailDetail(4, "HUD_MAIL_TITLE_COMPENSATE", "HUD_MAIL_CONTENT_COMPENSATE")
+    }
+
+    func RegisterMailDetail(mailId int, title string, content string) {
+        _MailDetailId2Title[mailId] = title
+        _MailDetailId2Content[mailId] = content
+    }
+
+    func RegisterGiftDefinition(
+        giftId int,
+        code string,
+        name string,
+        startAt int,
+        endAt int,
+        reuse bool,
+        rewardTypes List<string>,
+        rewardValues List<Map<string, object>>,
+        rewardAmounts List<object>) {
+        _GiftId2Code[giftId] = code
+        _GiftId2Name[giftId] = name
+        _GiftId2Start[giftId] = startAt
+        _GiftId2End[giftId] = endAt
+        _GiftId2Reuse[giftId] = reuse
+        _GiftId2RewardTypes[giftId] = rewardTypes
+        _GiftId2RewardValues[giftId] = rewardValues
+        _GiftId2RewardAmounts[giftId] = rewardAmounts
+    }
+
+    func GetMailTitleById(mailId int) string {
+        return _MailDetailId2Title[mailId]
+    }
+
+    func GetMailContentById(mailId int) string {
+        return _MailDetailId2Content[mailId]
+    }
+
+    func GetGiftCodeById(giftId int) string {
+        return _GiftId2Code[giftId]
+    }
+
+    func GetGiftIdByCode(code string) int {
+        for giftId, giftCode in _GiftId2Code {
+            if giftCode == code {
+                return giftId
+            }
+        }
+
+        return -1
+    }
+
+    func GetGiftNameById(giftId int) string {
+        if _GiftId2Name[giftId] == nil || _GiftId2Name[giftId] == "" {
+            return GetMailTitleById(giftId)
+        }
+
+        return _GiftId2Name[giftId]
+    }
+
+    func GetGiftReuseById(giftId int) bool {
+        return _GiftId2Reuse[giftId]
+    }
+
+    func IsValidGiftId(giftId int) bool {
+        return Map.ContainKey(_GiftId2Code, giftId)
+    }
+
+    func IsGiftWindowValid(giftId int, nowTs int) bool {
+        if !Map.ContainKey(_GiftId2Start, giftId) && !Map.ContainKey(_GiftId2End, giftId) {
+            return true
+        }
+
+        var startAt int = _GiftId2Start[giftId]
+        var endAt int = _GiftId2End[giftId]
+
+        if startAt > 0 && nowTs < startAt {
+            return false
+        }
+
+        if endAt > 0 && nowTs > endAt {
+            return false
+        }
+
+        return true
+    }
+
+    func TryBuildGiftRewards(
+        giftId int,
+        out var rewardTypes List<string>,
+        out var rewardValues List<Map<string, object>>,
+        out var rewardAmounts List<object>,
+        out var isSuccess bool) {
+        isSuccess = Map.ContainKey(_GiftId2RewardTypes, giftId)
+
+        if !isSuccess {
+            rewardTypes = List<string>{}
+            rewardValues = List<Map<string, object>>{}
+            rewardAmounts = List<object>{}
+            return
+        }
+
+        rewardTypes = List.Clone(_GiftId2RewardTypes[giftId]) as List<string>
+        rewardValues = List.Clone(_GiftId2RewardValues[giftId]) as List<Map<string, object>>
+        rewardAmounts = List.Clone(_GiftId2RewardAmounts[giftId]) as List<object>
+    }
+}

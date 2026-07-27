@@ -1,0 +1,164 @@
+import "Hud.fcc" as Hud
+import "List.fcc" as List
+import "StdLibrary.fcc" as StdLib
+
+import "../Configs/MailsDefinitions.fcg" as MailsDefinitions
+import "../Configs/MailsConfigs.fcg" as MailsConfigs
+import "../Managers/MailsManager.fcg" as MailsManager
+
+graph MailsHUD {
+    _CurrentTab int
+    _SelectedMailIndex int
+    _IsFirstOpen bool
+
+    _MailHUD entity<CustomUI>
+    _Root entity<UIWidget>
+    _TabsLayout entity<UIWidgetLayout>
+    _MailTitlesLayout entity<UIWidgetLayout>
+    _MailContentLabel entity<UIWidgetLabel>
+    _NoticeContent entity<UIWidget>
+    _SystemContent entity<UIWidget>
+    _ClaimButton entity<UIWidgetButton>
+    _MailsCount entity<UIWidgetLabel>
+
+    event OnAwake() {
+        _CurrentTab = MailsDefinitions.TAB_NOTICE
+        _SelectedMailIndex = 0
+        _IsFirstOpen = true
+        InitMailHUD()
+        HideMailHUD()
+    }
+
+    func InitMailHUD() {
+        if _MailHUD != nil {
+            return
+        }
+
+        CreateCustomUI(out var mailHud, thisEntity<Player>, MailsDefinitions.MAIL_UI_ASSET_ID as CustomUIAssetID)
+        _MailHUD = mailHud
+
+        _Root = GetWidgetByPath(thisEntity<Player>, _MailHUD, "Mail")
+        _TabsLayout = GetChildByName(_Root, "TabsLayout") as entity<UIWidgetLayout>
+        _NoticeContent = GetChildByName(_Root, "NoticeContent") as entity<UIWidget>
+        _SystemContent = GetChildByName(_Root, "SystemContent") as entity<UIWidget>
+        _MailContentLabel = GetChildByName(_Root, "MailContent") as entity<UIWidgetLabel>
+        _MailsCount = GetChildByName(_Root, "MailsCount") as entity<UIWidgetLabel>
+        _ClaimButton = GetChildByName(_Root, "ClaimButton") as entity<UIWidgetButton>
+        _MailTitlesLayout = GetChildByName(_Root, "MailTitlesLayout") as entity<UIWidgetLayout>
+    }
+
+    func ShowMailHUD() {
+        InitMailHUD()
+        _MailHUD<CustomUI>.IsVisible = true
+    }
+
+    func HideMailHUD() {
+        if _MailHUD == nil {
+            return
+        }
+
+        _MailHUD<CustomUI>.IsVisible = false
+    }
+
+    func IsShowing() bool {
+        if _MailHUD == nil {
+            return false
+        }
+
+        return _MailHUD<CustomUI>.IsVisible
+    }
+
+    func OpenMail() {
+        ShowMailHUD()
+        _SelectedMailIndex = 0
+        if _IsFirstOpen {
+            _IsFirstOpen = false
+        }
+        SwitchMailTab(MailsDefinitions.TAB_NOTICE)
+    }
+
+    func CloseMail() {
+        HideMailHUD()
+        _SelectedMailIndex = 0
+        SwitchMailTab(MailsDefinitions.TAB_NOTICE)
+    }
+
+    func SwitchMailTab(tabIndex int) {
+        _CurrentTab = tabIndex
+        if tabIndex == MailsDefinitions.TAB_NOTICE {
+            UpdateNoticeMails()
+        } else {
+            UpdateSystemMails()
+        }
+    }
+
+    func UpdateNoticeMails() {
+        _NoticeContent<UIWidget>.IsVisible = true
+        _SystemContent<UIWidget>.IsVisible = false
+        _ClaimButton<UIWidget>.IsVisible = false
+        _MailsCount<UIWidget>.IsVisible = false
+
+        if _SelectedMailIndex == 0 {
+            _MailContentLabel<UIWidgetLabel>.Content = MailsConfigs.GetMailContentById(1)
+        } else if _SelectedMailIndex == 1 {
+            _MailContentLabel<UIWidgetLabel>.Content = MailsConfigs.GetMailContentById(2)
+        } else {
+            _MailContentLabel<UIWidgetLabel>.Content = MailsConfigs.GetMailContentById(3)
+        }
+    }
+
+    func UpdateSystemMails() {
+        _NoticeContent<UIWidget>.IsVisible = false
+        _SystemContent<UIWidget>.IsVisible = true
+        _MailsCount<UIWidget>.IsVisible = true
+        _MailsCount<UIWidgetLabel>.Content = "Mails: " + MailsManager.GetPlayerMailsCount(thisEntity<Player>.UserUID) + "/" + MailsDefinitions.MAX_MAILS
+
+        var currentMails List<Map<string, object>> = MailsManager.GetPlayerMails(thisEntity<Player>.UserUID)
+        if List.Length(currentMails) == 0 {
+            _MailContentLabel<UIWidgetLabel>.Content = "HUD_MAIL_NO_REWARD"
+            _ClaimButton<UIWidget>.IsVisible = false
+            return
+        }
+
+        if _SelectedMailIndex >= List.Length(currentMails) {
+            _SelectedMailIndex = 0
+        }
+
+        var currentMail Map<string, object> = currentMails[_SelectedMailIndex]
+        var mailId int = currentMail[MailsDefinitions.DATA_MAIL_ID] as int
+
+        if currentMail[MailsDefinitions.DATA_MAIL_IS_CONFIG] == true {
+            _MailContentLabel<UIWidgetLabel>.Content = "HUD_REWARD_NOT_RECEIVE"
+        } else {
+            _MailContentLabel<UIWidgetLabel>.Content = MailsConfigs.GetMailContentById(mailId)
+        }
+
+        var rewardTypes List<string> = currentMail[MailsDefinitions.DATA_MAIL_REWARD_TYPES] as List<string>
+        _ClaimButton<UIWidget>.IsVisible = List.Length(rewardTypes) > 0
+    }
+
+    func HandleSwitchMail(mailIndex int) {
+        _SelectedMailIndex = mailIndex
+        if _CurrentTab == MailsDefinitions.TAB_NOTICE {
+            UpdateNoticeMails()
+        } else {
+            UpdateSystemMails()
+        }
+    }
+
+    func HandleClaimMail() {
+        MailsManager.RequestClaimMail(
+            Map<string, object>{
+                MailsDefinitions.PAYLOAD_PLAYER_UID: thisEntity<Player>.UserUID,
+                MailsDefinitions.PAYLOAD_PLAYER: thisEntity<Player>,
+                MailsDefinitions.PAYLOAD_MAIL_INDEX: _SelectedMailIndex,
+            },
+            out var statusCode,
+            out var claimedMail,
+        )
+
+        if statusCode == MailsDefinitions.STATUS_NO_ERROR {
+            UpdateSystemMails()
+        }
+    }
+}
