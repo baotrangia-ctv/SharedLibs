@@ -1,8 +1,11 @@
 import "Hud.fcc" as Hud
 import "List.fcc" as List
 import "StdLibrary.fcc" as StdLib
+import "EditorGenLib.fcc" as EditorGenLib
 
-graph MailsHUDControl {
+import "./HudMails.fcg" as HudMails
+
+graph HudMailsControl {
     event OnTapButton(player entity<Player>, button entity<UIWidgetButton>) {
         start HandleTapButton(player, button)
     }
@@ -14,29 +17,29 @@ graph MailsHUDControl {
         }
 
         if button<Entity>.Name == "CloseMailButton" || button<Entity>.Name == "CloseButton" {
-            player<MailsHUD>.CloseMail()
+            player<HudMails>.CloseMail()
             return
         }
 
         if button<Entity>.Name == "TabNoticeButton" {
-            player<MailsHUD>.SwitchMailTab(0)
+            player<HudMails>.SwitchMailTab(0)
             return
         }
 
         if button<Entity>.Name == "TabSystemButton" {
-            player<MailsHUD>.SwitchMailTab(1)
+            player<HudMails>.SwitchMailTab(1)
             return
         }
 
         if button<Entity>.Name == "ClaimButton" {
-            player<MailsHUD>.HandleClaimMail()
+            player<HudMails>.HandleClaimMail()
             return
         }
 
         if button<Entity>.Name == "Mail" || button<Entity>.Name == "Mail (1)" || button<Entity>.Name == "Mail (2)" {
             var mailTitlesLayout entity<UIWidgetLayout> = GetParent(button) as entity<UIWidgetLayout>
             var mailIndex int = List.IndexOf(GetChildren(mailTitlesLayout), button)
-            player<MailsHUD>.HandleSwitchMail(mailIndex)
+            player<HudMails>.HandleSwitchMail(mailIndex)
         }
     }
 }

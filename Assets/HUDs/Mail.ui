@@ -53,8 +53,8 @@
         "priority": 0,
         "button": {
           "spriteName": {
-            "fileId": "amqbaf0ix1n-mincvgtv-gm0n5ept0bj",
-            "filePath": "Assets\\Sprites\\UIComponents\\Backgrounds\\DarkBG.png",
+            "fileId": "0ba7fbea6c357ace9eba165fcaf9465a",
+            "filePath": "lib://fftextures/WorkshopIconLibrary/BG_black.png",
             "_tag": {
               "type": "GFileRefer"
             },
@@ -400,8 +400,8 @@
                 "priority": 0,
                 "button": {
                   "spriteName": {
-                    "fileId": "f9euyqwxbow-minctbvv-qqbidtvn9l",
-                    "filePath": "Assets\\Sprites\\UIComponents\\Icons\\CloseIcon.png",
+                    "fileId": "355f66bo9oa-mpao6h2z-9m4yytkduiu",
+                    "filePath": "Assets\\Sprites\\CrossIcon.png",
                     "_tag": {
                       "type": "GFileRefer"
                     },
@@ -509,14 +509,14 @@
             "priority": 0,
             "image": {
               "source": {
-                "fileId": "3b4ikebd1mn-minctbs9-a8p23winp6",
-                "filePath": "Assets\\Sprites\\UIComponents\\Backgrounds\\TitleBG.png",
+                "fileId": "5eq0d02zv5k-mpaoiyf8-77v261e0uut",
+                "filePath": "Assets\\Sprites\\SquareRounded128.png",
                 "_tag": {
                   "type": "GFileRefer"
                 },
                 "fileType": "texture"
               },
-              "color": "#ffffff",
+              "color": "#1f64c4",
               "reverse": {
                 "x": false,
                 "y": false
@@ -633,8 +633,8 @@
                     "priority": 0,
                     "image": {
                       "source": {
-                        "fileId": "yx8djitv8x-mincvgn2-3uhjem39mhx",
-                        "filePath": "Assets\\Sprites\\UIComponents\\Icons\\NewsIcon.png",
+                        "fileId": "b7831350154a9fe1eb5bf5ed93f2c76f",
+                        "filePath": "lib://fftextures/WorkshopIconLibrary/T_34_M_WS_ICON_OPENFOLDER.png",
                         "_tag": {
                           "type": "GFileRefer"
                         },
@@ -949,8 +949,8 @@
                 "priority": 0,
                 "button": {
                   "spriteName": {
-                    "fileId": "h3f4wu0ypr-minctbz1-k8lcbtaehgk",
-                    "filePath": "Assets\\Sprites\\UIComponents\\Backgrounds\\BG.png",
+                    "fileId": "5eq0d02zv5k-mpaoiyf8-77v261e0uut",
+                    "filePath": "Assets\\Sprites\\SquareRounded128.png",
                     "_tag": {
                       "type": "GFileRefer"
                     },
@@ -1073,8 +1073,8 @@
                     "priority": 0,
                     "image": {
                       "source": {
-                        "fileId": "kgyyx5h7z9c-mis9ya7k-91yrbeocnqc",
-                        "filePath": "Assets\\Sprites\\UIComponents\\Icons\\MailsIcon.png",
+                        "fileId": "f32e99f724d9cb7132e69fa108a7e068",
+                        "filePath": "lib://fftextures/WorkshopIconLibrary/T_34_M_WS_ICON_FOLDER.png",
                         "_tag": {
                           "type": "GFileRefer"
                         },
@@ -1389,8 +1389,8 @@
                 "priority": 0,
                 "button": {
                   "spriteName": {
-                    "fileId": "h3f4wu0ypr-minctbz1-k8lcbtaehgk",
-                    "filePath": "Assets\\Sprites\\UIComponents\\Backgrounds\\BG.png",
+                    "fileId": "5eq0d02zv5k-mpaoiyf8-77v261e0uut",
+                    "filePath": "Assets\\Sprites\\SquareRounded128.png",
                     "_tag": {
                       "type": "GFileRefer"
                     },
@@ -1612,8 +1612,8 @@
                         "priority": 0,
                         "image": {
                           "source": {
-                            "fileId": "yx8djitv8x-mincvgn2-3uhjem39mhx",
-                            "filePath": "Assets\\Sprites\\UIComponents\\Icons\\NewsIcon.png",
+                            "fileId": "c57b6e05261ea546542a6b002a56c725",
+                            "filePath": "lib://fftextures/WorkshopIconLibrary/Icon_Chat_Speaker.png",
                             "_tag": {
                               "type": "GFileRefer"
                             },
@@ -2035,8 +2035,8 @@
                     "priority": 0,
                     "button": {
                       "spriteName": {
-                        "fileId": "h3f4wu0ypr-minctbz1-k8lcbtaehgk",
-                        "filePath": "Assets\\Sprites\\UIComponents\\Backgrounds\\BG.png",
+                        "fileId": "5eq0d02zv5k-mpaoiyf8-77v261e0uut",
+                        "filePath": "Assets\\Sprites\\SquareRounded128.png",
                         "_tag": {
                           "type": "GFileRefer"
                         },
@@ -2171,8 +2171,8 @@
                         "priority": 0,
                         "image": {
                           "source": {
-                            "fileId": "yx8djitv8x-mincvgn2-3uhjem39mhx",
-                            "filePath": "Assets\\Sprites\\UIComponents\\Icons\\NewsIcon.png",
+                            "fileId": "c57b6e05261ea546542a6b002a56c725",
+                            "filePath": "lib://fftextures/WorkshopIconLibrary/Icon_Chat_Speaker.png",
                             "_tag": {
                               "type": "GFileRefer"
                             },
@@ -2594,8 +2594,8 @@
                     "priority": 0,
                     "button": {
                       "spriteName": {
-                        "fileId": "h3f4wu0ypr-minctbz1-k8lcbtaehgk",
-                        "filePath": "Assets\\Sprites\\UIComponents\\Backgrounds\\BG.png",
+                        "fileId": "5eq0d02zv5k-mpaoiyf8-77v261e0uut",
+                        "filePath": "Assets\\Sprites\\SquareRounded128.png",
                         "_tag": {
                           "type": "GFileRefer"
                         },
@@ -2730,8 +2730,8 @@
                         "priority": 0,
                         "image": {
                           "source": {
-                            "fileId": "yx8djitv8x-mincvgn2-3uhjem39mhx",
-                            "filePath": "Assets\\Sprites\\UIComponents\\Icons\\NewsIcon.png",
+                            "fileId": "c57b6e05261ea546542a6b002a56c725",
+                            "filePath": "lib://fftextures/WorkshopIconLibrary/Icon_Chat_Speaker.png",
                             "_tag": {
                               "type": "GFileRefer"
                             },
@@ -3153,8 +3153,8 @@
                     "priority": 0,
                     "button": {
                       "spriteName": {
-                        "fileId": "h3f4wu0ypr-minctbz1-k8lcbtaehgk",
-                        "filePath": "Assets\\Sprites\\UIComponents\\Backgrounds\\BG.png",
+                        "fileId": "5eq0d02zv5k-mpaoiyf8-77v261e0uut",
+                        "filePath": "Assets\\Sprites\\SquareRounded128.png",
                         "_tag": {
                           "type": "GFileRefer"
                         },
@@ -3792,14 +3792,14 @@
                         "priority": 0,
                         "image": {
                           "source": {
-                            "fileId": "vc1rd0aou4-mgs9roz7-880k7t4570q",
-                            "filePath": "Assets\\Sprites\\Facebook.png",
+                            "fileId": "6b07d6203e7e43c774714344577231ee",
+                            "filePath": "lib://fftextures/WorkshopIconLibrary/FF_WS_guest.png",
                             "_tag": {
                               "type": "GFileRefer"
                             },
                             "fileType": "texture"
                           },
-                          "color": "#ffffff",
+                          "color": "#1f64c4",
                           "reverse": {
                             "x": false,
                             "y": false
@@ -13123,8 +13123,8 @@
         "priority": 0,
         "image": {
           "source": {
-            "fileId": "h3f4wu0ypr-minctbz1-k8lcbtaehgk",
-            "filePath": "Assets\\Sprites\\UIComponents\\Backgrounds\\BG.png",
+            "fileId": "5eq0d02zv5k-mpaoiyf8-77v261e0uut",
+            "filePath": "Assets\\Sprites\\SquareRounded128.png",
             "_tag": {
               "type": "GFileRefer"
             },
@@ -13227,8 +13227,8 @@
   },
   "ecaScripts": [
     {
-      "fileId": "zgrsgs3mihk-meutfwgv-85k1zvx2ww",
-      "filePath": "Assets\\Scripts\\Utils\\CustomUIUtils.fcg",
+      "fileId": "eu8vojbebvh-ms3t1y9r-dokouo4y8i",
+      "filePath": "Assets\\Scripts\\HUDs\\Mails\\MailsHUDControl.fcg",
       "_tag": {
         "type": "GFileRefer"
       },
@@ -13244,8 +13244,8 @@
   "entityTagData": {
     "tagPointers": []
   },
-  "layer": 18,
+  "layer": 0,
   "discriminator": "ISceneLike",
   "version": 3
 }
-//"{FE:{"v":"1.18.4483971","c":{"FF":5001},"s":100}
+//"{FE:{"v":"1.18.4494106","c":{"FF":5001},"s":100}

@@ -4,9 +4,12 @@ import "Database.fcc" as Database
 import "StdLibrary.fcc" as StdLib
 
 import "../CoreLib/DatabaseController.fcg" as DatabaseController
-import "../Configs/MailsDefinitions.fcg" as MailsDefinitions
-import "../Configs/MailsConfigs.fcg" as MailsConfigs
+import "../Consts/MailsDefinitions.fcg" as MailsDefinitions
+import "../Consts/StatusCodes.fcg" as StatusCodes
+import "../Configs/MailConfigs.fcg" as MailConfigs
 import "../Utils/DataUtils.fcg" as DataUtils
+import "EditorGenLib.fcc" as EditorGenLib
+import "Convert.fcc" as Convert
 
 static graph MailsManager {
     _PlayerMails Map<UUID, List<Map<string, object>>>
@@ -61,10 +64,15 @@ static graph MailsManager {
                 MailsDefinitions.SHEET_GIFT_HAS_USE,
                 playerUID,
                 MailsDefinitions.KEY_GIFT_HAS_USE,
-                out rawUsedGiftIds,
+                out var retryUsedGiftIds,
                 MailsDefinitions.MAP_CODE,
-                out usedGiftStatus,
+                out var statusCode,
             )
+
+            rawUsedGiftIds = retryUsedGiftIds
+            if statusCode != StatusCode.NoError {
+                return
+            }
         }
 
         if rawUsedGiftIds == nil {
@@ -90,10 +98,15 @@ static graph MailsManager {
                 MailsDefinitions.SHEET_MAILS,
                 playerUID,
                 MailsDefinitions.KEY_CURRENT_MAILS,
-                out rawCurrentMails,
+                out var retryCurrentMails,
                 MailsDefinitions.MAP_CODE,
                 out var retryCurrentStatus,
             )
+
+            rawCurrentMails = retryCurrentMails
+            if retryCurrentStatus != StatusCode.NoError {
+                return
+            }
         }
 
         if statusCodes[1] != StatusCode.NoError {
@@ -101,10 +114,15 @@ static graph MailsManager {
                 MailsDefinitions.SHEET_MAILS,
                 playerUID,
                 MailsDefinitions.KEY_PENDING_MAILS,
-                out rawPendingMails,
+                out var retryPendingMails,
                 MailsDefinitions.MAP_CODE,
                 out var retryPendingStatus,
             )
+
+            rawPendingMails = retryPendingMails
+            if retryPendingStatus != StatusCode.NoError {
+                return
+            }
         }
 
         CombinePlayerMails(
@@ -158,8 +176,10 @@ static graph MailsManager {
     }
 
     func RequestReceiveMail(payload Map<string, object>, out var statusCode string) {
-        CheckConditionReceiveMail(payload, out statusCode)
-        if statusCode != MailsDefinitions.STATUS_NO_ERROR {
+        CheckConditionReceiveMail(payload, out var checkStatusCode)
+        statusCode = checkStatusCode
+
+        if checkStatusCode != StatusCodes.STATUS_NO_ERROR {
             return
         }
 
@@ -169,35 +189,35 @@ static graph MailsManager {
     func CheckConditionReceiveMail(payload Map<string, object>, out var statusCode string) {
         var playerUID UUID = payload[MailsDefinitions.PAYLOAD_PLAYER_UID] as UUID
         if !Map.ContainKey(_PlayerMails, playerUID) {
-            statusCode = MailsDefinitions.STATUS_PLAYER_DISCONNECT
+            statusCode = StatusCodes.STATUS_PLAYER_DISCONNECT
             return
         }
 
         if IsMaxMails(playerUID) {
-            statusCode = MailsDefinitions.STATUS_PLAYER_FULL_MAIL
+            statusCode = StatusCodes.STATUS_PLAYER_FULL_MAIL
             return
         }
 
         var isConfigMail bool = payload[MailsDefinitions.PAYLOAD_IS_CONFIG_MAIL] as bool
         if isConfigMail {
             var giftId int = payload[MailsDefinitions.PAYLOAD_MAIL_ID] as int
-            if !MailsConfigs.IsValidGiftId(giftId) {
-                statusCode = MailsDefinitions.STATUS_GIFT_CODE_INVALID
+            if !MailConfigs.IsValidGiftId(giftId) {
+                statusCode = StatusCodes.STATUS_GIFT_CODE_INVALID
                 return
             }
 
-            if HasUsedGiftcode(playerUID, giftId) && !MailsConfigs.GetGiftReuseById(giftId) {
-                statusCode = MailsDefinitions.STATUS_GIFT_CODE_HAS_USE
+            if HasUsedGiftcode(playerUID, giftId) && !MailConfigs.GetGiftReuseById(giftId) {
+                statusCode = StatusCodes.STATUS_GIFT_CODE_HAS_USE
                 return
             }
 
-            if !MailsConfigs.IsGiftWindowValid(giftId, GetServerTimestamp()) {
-                statusCode = MailsDefinitions.STATUS_GIFT_CODE_EXPIRED
+            if !MailConfigs.IsGiftWindowValid(giftId, GetServerTimestamp()) {
+                statusCode = StatusCodes.STATUS_GIFT_CODE_EXPIRED
                 return
             }
         }
 
-        statusCode = MailsDefinitions.STATUS_NO_ERROR
+        statusCode = StatusCodes.STATUS_NO_ERROR
     }
 
     func ProcessReceiveMail(payload Map<string, object>) {
@@ -217,14 +237,16 @@ static graph MailsManager {
     }
 
     func RequestClaimMail(payload Map<string, object>, out var statusCode string, out var claimedMail Map<string, object>) {
-        CheckConditionClaimMail(payload, out statusCode)
-        if statusCode != MailsDefinitions.STATUS_NO_ERROR {
+        CheckConditionClaimMail(payload, out var checkStatusCode)
+        statusCode = checkStatusCode
+
+        if checkStatusCode != StatusCodes.STATUS_NO_ERROR {
             claimedMail = nil
             return
         }
 
-        ProcessClaimMail(payload, out claimedMail)
-        statusCode = MailsDefinitions.STATUS_NO_ERROR
+        ProcessClaimMail(payload, out var processClaimedMail)
+        claimedMail = processClaimedMail
     }
 
     func CheckConditionClaimMail(payload Map<string, object>, out var statusCode string) {
@@ -291,8 +313,9 @@ static graph MailsManager {
         var mail Map<string, object> = GetPlayerMailByIndex(playerUID, mailIndex)
         var createdAt int = mail[MailsDefinitions.DATA_MAIL_CREATED_AT] as int
         var elapsedDays int = (GetServerTimestamp() - createdAt) / MailsDefinitions.SECONDS_PER_DAY
+        var expireDatesLeft int = MailsDefinitions.MAX_VALID_DAYS - elapsedDays
 
-        return MailsDefinitions.MAX_VALID_DAYS - elapsedDays
+        return expireDatesLeft
     }
 
     func IsValidMailIndex(playerUID UUID, mailIndex int) bool {
@@ -312,7 +335,7 @@ static graph MailsManager {
             return
         }
 
-        if MailsConfigs.IsValidGiftId(giftId) && MailsConfigs.GetGiftReuseById(giftId) {
+        if MailConfigs.IsValidGiftId(giftId) && MailConfigs.GetGiftReuseById(giftId) {
             return
         }
 
@@ -395,9 +418,7 @@ static graph MailsManager {
 
             if mailData[MailsDefinitions.DATA_MAIL_IS_CONFIG] == false {
                 data[MailsDefinitions.DATA_MAIL_REWARD_TYPES] = DataUtils.ListStringToStringUseComma(mailData[MailsDefinitions.DATA_MAIL_REWARD_TYPES] as List<string>, ",")
-                data[MailsDefinitions.DATA_MAIL_REWARD_VALUES] = DataUtils.ListKeyValueToJsonString(
-                    NormalizeRewardValues(mailData[MailsDefinitions.DATA_MAIL_REWARD_VALUES] as List<Map<string, object>>)
-                )
+                data[MailsDefinitions.DATA_MAIL_REWARD_VALUES] = DataUtils.ListKeyValueToJsonString(NormalizeRewardValues(mailData[MailsDefinitions.DATA_MAIL_REWARD_VALUES] as List<Map<string, object>>))
                 data[MailsDefinitions.DATA_MAIL_REWARD_AMOUNTS] = DataUtils.ListIntToString(mailData[MailsDefinitions.DATA_MAIL_REWARD_AMOUNTS] as List<int>)
             }
 
@@ -433,23 +454,11 @@ static graph MailsManager {
 
         if mailDetails[MailsDefinitions.DATA_MAIL_IS_CONFIG] == true {
             var giftId int = mailDetails[MailsDefinitions.DATA_MAIL_ID] as int
-            MailsConfigs.TryBuildGiftRewards(
-                giftId,
-                out var rewardTypes,
-                out var rewardValues,
-                out var rewardAmounts,
-                out var ok,
-            )
+            var giftRewards List<Map<string, object>> = MailConfigs.GetGiftRewardsById(giftId)
 
-            if ok {
-                result[MailsDefinitions.DATA_MAIL_REWARD_TYPES] = rewardTypes
-                result[MailsDefinitions.DATA_MAIL_REWARD_VALUES] = rewardValues
-                result[MailsDefinitions.DATA_MAIL_REWARD_AMOUNTS] = rewardAmounts
-            } else {
-                result[MailsDefinitions.DATA_MAIL_REWARD_TYPES] = List<string>{}
-                result[MailsDefinitions.DATA_MAIL_REWARD_VALUES] = List<Map<string, object>>{}
-                result[MailsDefinitions.DATA_MAIL_REWARD_AMOUNTS] = List<object>{}
-            }
+            result[MailsDefinitions.DATA_MAIL_REWARD_TYPES] = rewardTypes
+            result[MailsDefinitions.DATA_MAIL_REWARD_VALUES] = rewardValues
+            result[MailsDefinitions.DATA_MAIL_REWARD_AMOUNTS] = rewardAmounts
         }
 
         return result

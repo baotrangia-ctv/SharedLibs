@@ -1,0 +1,102 @@
+import "Hud.fcc" as Hud
+import "Map.fcc" as Map
+import "StdLibrary.fcc" as StdLib
+import "EditorGenLib.fcc" as EditorLib
+import Res from "EditorGenLib.fcc"
+
+import "../../Consts/MailsDefinitions.fcg" as MailsDefinitions
+import "../../Managers/MailsManager.fcg" as MailsManager
+import "../../CoreLib/DatabaseController.fcg" as DatabaseController
+
+graph HudMenu {
+    UPDATE_REBIRTH_ALERT_INTERVAL = 3000
+    EXPAND_ICON_NO_FLIP = 2
+    EXPAND_ICON_FLIP = 1
+
+    _CanUpdateRebirthAlert bool
+
+    _MenuHUD entity<CustomUI>
+    _ExpandButton entity<UIWidgetButton>
+    _ExpandToolsWidget entity<UIWidget>
+    _ExpandIcon entity<UIWidgetImage>
+    _AlertMenuIcon entity<UIWidgetImage>
+    _AlertNewsIcon entity<UIWidgetImage>
+    _AlertRebirthIcon entity<UIWidgetImage>
+    _AlertDecorationIcon entity<UIWidgetImage>
+    _AlertActivitiesIcon entity<UIWidgetImage>
+    _DecorationButton entity<UIWidgetButton>
+    _RearrangePetsButton entity<UIWidgetButton>
+    _StorageButton entity<UIWidgetButton>
+    _GiftCodeButton entity<UIWidgetButton>
+
+    event OnAwake() {
+        _CanUpdateRebirthAlert = true
+
+        ShowMenuHUD()
+    }
+
+    func InitMenuHUD() {
+        if _MenuHUD != nil {
+            return
+        }
+
+        CreateCustomUI(out var menuHud, thisEntity<Player>, EResUI.Menu)
+        _MenuHUD = menuHud
+
+        _ExpandButton = GetHUDWidget(EResKeyMenu.ExpandButton) as entity<UIWidgetButton>
+        _ExpandToolsWidget = GetHUDWidget(EResKeyMenu.ExpandTools) as entity<UIWidget>
+        _ExpandIcon = GetHUDWidget(EResKeyMenu.ExpandIcon) as entity<UIWidgetImage>
+        _AlertMenuIcon = GetHUDWidget(EResKeyMenu.AlertMenuIcon) as entity<UIWidgetImage>
+        _AlertNewsIcon = GetHUDWidget(EResKeyMenu.AlertMailIcon) as entity<UIWidgetImage>
+
+        HideMenuHUD()
+    }
+
+    func GetHUDWidget(eResKey EResKeyMenu) entity<UIWidget> {
+        return GetWidgetFromCustomUI(thisEntity<Player>, _MenuHUD, Res.Menu[eResKey])
+    }
+
+    func ShowMenuHUD() {
+        InitMenuHUD()
+
+        HideExtraTools()
+
+        start UpdateNewsAlert()
+
+        _MenuHUD<CustomUI>.IsVisible = true
+    }
+
+    func HideMenuHUD() {
+        _MenuHUD<CustomUI>.IsVisible = false
+    }
+
+    func ShowExpandButton() {
+        _ExpandButton<UIWidget>.IsVisible = true
+    }
+
+    func HideExpandButton() {
+        _ExpandButton<UIWidget>.IsVisible = false
+    }
+
+    func ShowExtraTools() {
+        UpdateExtraTools()
+        _ExpandToolsWidget<UIWidget>.IsVisible = true
+        _ExpandIcon<UIWidgetImage>.Flip = EXPAND_ICON_FLIP
+    }
+
+    func HideExtraTools() {
+        _ExpandToolsWidget<UIWidget>.IsVisible = false
+        _ExpandIcon<UIWidgetImage>.Flip = EXPAND_ICON_NO_FLIP
+    }
+
+    func UpdateExtraTools() {
+    }
+
+    async func UpdateNewsAlert() {
+        while (!DatabaseController.IsDatabaseReady(thisEntity<Player>.UserUID, MailsDefinitions.DATABASE_TYPE)) {
+            WaitForMillisecond(1000)
+        }
+
+        _AlertNewsIcon<UIWidget>.IsVisible = MailsManager.IsHavingMail(thisEntity<Player>.UserUID)
+    }
+}

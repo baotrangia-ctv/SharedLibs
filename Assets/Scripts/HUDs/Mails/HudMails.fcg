@@ -1,0 +1,375 @@
+import "Hud.fcc" as Hud
+import "List.fcc" as List
+import "Convert.fcc" as Convert
+import "Strings.fcc" as Strings
+import "StdLibrary.fcc" as StdLib
+import "EditorGenLib.fcc" as EditorLib
+import Res from "EditorGenLib.fcc"
+
+import "../../Consts/MailsDefinitions.fcg" as MailsDefinitions
+import "../../Consts/RequestParams.fcg" as RequestParams
+import "../../Configs/MailConfigs.fcg" as MailConfigs
+import "../../Managers/MailsManager.fcg" as MailsManager
+import "../../HUDs/Menu/HudMenu.fcg" as HudMenu
+import "../../CoreLib/DatabaseController.fcg" as DatabaseController
+
+graph HudMails {
+    MIN_GIFT_MONEY_TIME = 30100
+    MAX_GIFT_MONEY_TIME = 80020
+    DEFAULT_TAB_TOP = #B9DCF2
+    DEFAULT_TAB_BOTTOM = #B9DCF2
+    DEFAULT_TEXT_COLOR = #1F64C4
+    ACTIVE_TAB_TOP = #216ABD
+    ACTIVE_TAB_BOTTOM = #457FDF
+    ACTIVE_TEXT_COLOR = #E5FAFE
+
+    MAIL_ICON Map<string, EResSprite> = Map<string, EResSprite>{
+        MailsDefinitions.HUD_MAIL_TAB_NOTICE: EResSprite.MailNoticeIcon,
+        MailsDefinitions.HUD_MAIL_TAB_SYSTEM: EResSprite.MailSystemIcon,
+    }
+
+    MAX_NOTICE_MAILS int = 3
+    MAIL_NOTICE_TITLE Map<int, StringOrLocString> = Map<int, StringOrLocString>{
+        0: LocString{"HUD_MAIL_TITLE_NOTICE_CONTENT_NEW", {}},
+        1: LocString{"HUD_MAIL_TITLE_NOTICE_CONTENT_OLD_1", {}},
+        2: LocString{"HUD_MAIL_TITLE_NOTICE_CONTENT_OLD_2", {}},
+    }
+    MAIL_NOTICE_CONTENT Map<int, StringOrLocString> = Map<int, StringOrLocString>{
+        0: LocString{"HUD_MAIL_NOTICE_CONTENT_NEW", {}},
+        1: LocString{"HUD_MAIL_NOTICE_CONTENT_OLD_1", {}},
+        2: LocString{"HUD_MAIL_NOTICE_CONTENT_OLD_2", {}},
+    }
+
+    _CurrentMailTab string
+    _SelectingMailIndex int
+    _IsFirstTimeOpen bool
+
+    _MailHUD entity<CustomUI>
+    _TabButtons Map<string, entity<UIWidgetButton>>
+    _MainContent Map<string, entity<UIWidget>>
+    _MailContentLabel entity<UIWidgetLabel>
+    _MailTitlesLayout entity<UIWidgetLayout>
+    _RewardWidgets List<entity<UIWidget>>
+    _NextVersionLabel entity<UIWidgetLabel>
+    _ClaimButton entity<UIWidgetButton>
+    _MailsCount entity<UIWidgetLabel>
+
+    func InitMailHUD() {
+        if _MailHUD != nil {
+            return
+        }
+
+        CreateCustomUI(out var mailHud, thisEntity<Player>, EResUI.Mail)
+        _MailHUD = mailHud
+
+        _TabButtons = Map<string, entity<UIWidgetButton>>{}
+        _MainContent = Map<string, entity<UIWidget>>{}
+        _CurrentMailTab = MailsDefinitions.HUD_MAIL_TAB_NOTICE
+        _IsFirstTimeOpen = true
+
+        var tabsLayout entity<UIWidgetLayout> = GetHUDWidget(EResKeyMail.TabsLayout) as entity<UIWidgetLayout>
+        _TabButtons[MailsDefinitions.HUD_MAIL_TAB_NOTICE] = GetChildByName(tabsLayout, "TabNoticeButton") as entity<UIWidgetButton>
+        _TabButtons[MailsDefinitions.HUD_MAIL_TAB_SYSTEM] = GetChildByName(tabsLayout, "TabSystemButton") as entity<UIWidgetButton>
+
+        _MailContentLabel = GetHUDWidget(EResKeyMail.MailContent) as entity<UIWidgetLabel>
+        _MainContent[MailsDefinitions.HUD_MAIL_TAB_NOTICE] = GetHUDWidget(EResKeyMail.NoticeContent)
+        _MainContent[MailsDefinitions.HUD_MAIL_TAB_SYSTEM] = GetHUDWidget(EResKeyMail.SystemContent)
+
+        _MailTitlesLayout = GetHUDWidget(EResKeyMail.MailTitlesLayout) as entity<UIWidgetLayout>
+        _RewardWidgets = GetChildren(GetHUDWidget(EResKeyMail.RewardsLayout)) as List<entity<UIWidget>>
+        _NextVersionLabel = GetHUDWidget(EResKeyMail.NextVersionLabel) as entity<UIWidgetLabel>
+        _ClaimButton = GetHUDWidget(EResKeyMail.ClaimButton) as entity<UIWidgetButton>
+        _MailsCount = GetHUDWidget(EResKeyMail.MailsCount) as entity<UIWidgetLabel>
+
+        HideMailHUD()
+    }
+
+    func GetHUDWidget(eResKey EResKeyMail) entity<UIWidget> {
+        return GetWidgetFromCustomUI(thisEntity<Player>, _MailHUD, Res.Mail[eResKey])
+    }
+
+    func ShowMailHUD() {
+        InitMailHUD()
+
+        _MailHUD<CustomUI>.IsVisible = true
+    }
+
+    func HideMailHUD() {
+        _MailHUD<CustomUI>.IsVisible = false
+    }
+
+    func IsShowing() bool {
+        return _MailHUD<CustomUI>.IsVisible
+    }
+
+    func OpenMail() {
+        ShowMailHUD()
+
+        var playerUID UUID = thisEntity<Player>.UserUID
+        if !DatabaseController.IsDatabaseReady(playerUID, MailsDefinitions.DATABASE_TYPE) {
+            HideMailHUD()
+            return
+        }
+
+        _SelectingMailIndex = 0
+        SwitchMailTab(MailsDefinitions.HUD_MAIL_TAB_NOTICE)
+    }
+
+    func CloseMail() {
+        HideMailHUD()
+
+        SwitchMailTab(MailsDefinitions.HUD_MAIL_TAB_NOTICE)
+        _SelectingMailIndex = 0
+    }
+
+    // ==========================
+    // Mail Tabs
+    // ==========================
+
+    func SwitchMailTab(mailTab string) {
+        if _CurrentMailTab == mailTab && !_IsFirstTimeOpen {
+            return
+        }
+
+        _IsFirstTimeOpen = false
+
+        UpdateTab(_CurrentMailTab, false)
+        UpdateTab(mailTab, true)
+
+        _CurrentMailTab = mailTab
+        _SelectingMailIndex = 0
+
+        if _CurrentMailTab == MailsDefinitions.HUD_MAIL_TAB_NOTICE {
+            UpdateNoticeMails()
+        } else if _CurrentMailTab == MailsDefinitions.HUD_MAIL_TAB_SYSTEM {
+            var playerUID UUID = thisEntity<Player>.UserUID
+            if !DatabaseController.IsDatabaseReady(playerUID, MailsDefinitions.DATABASE_TYPE) {
+                _MailContentLabel<UIWidgetLabel>.Content = LocString{"HUD_LOADING", {}}
+            } else {
+                UpdateSystemMails()
+            }
+        } else {}
+    }
+
+    func UpdateTab(mailTab string, isActive bool) {
+        var tabButton entity<UIWidgetButton> = _TabButtons[mailTab]
+        var tabLabel entity<UIWidgetLabel> = GetChildByName(tabButton, "Label") as entity<UIWidgetLabel>
+
+        if isActive {
+            tabButton<UIWidgetButton>.GradientTop = ACTIVE_TAB_TOP
+            tabButton<UIWidgetButton>.GradientBottom = ACTIVE_TAB_BOTTOM
+            tabLabel<UIWidgetLabel>.Color = ACTIVE_TEXT_COLOR
+        } else {
+            tabButton<UIWidgetButton>.GradientTop = DEFAULT_TAB_TOP
+            tabButton<UIWidgetButton>.GradientBottom = DEFAULT_TAB_BOTTOM
+            tabLabel<UIWidgetLabel>.Color = DEFAULT_TEXT_COLOR
+        }
+
+        var contentWidget entity<UIWidget> = _MainContent[mailTab]
+        contentWidget<UIWidget>.IsVisible = isActive
+    }
+
+    // ==========================
+    // Mail Tabs/Titles
+    // ==========================
+
+    func RefreshMailTabs() {
+        var tabNoticeButton entity<UIWidgetButton> = _TabButtons[MailsDefinitions.HUD_MAIL_TAB_NOTICE]
+        var alertNoticeIcon entity<UIWidgetImage> = GetChildByName(tabNoticeButton, "AlertIconNotice") as entity<UIWidgetImage>
+        var isShowNoticeIcon bool = false
+        alertNoticeIcon<UIWidget>.IsVisible = false
+
+        var tabSystemButton entity<UIWidgetButton> = _TabButtons[MailsDefinitions.HUD_MAIL_TAB_SYSTEM]
+        var alertSystemIcon entity<UIWidgetImage> = GetChildByName(tabSystemButton, "AlertIconSystem") as entity<UIWidgetImage>
+        var isShowSystemIcon bool = MailsManager.GetPlayerMailsCount(thisEntity<Player>.UserUID) > 0
+        alertSystemIcon<UIWidget>.IsVisible = isShowSystemIcon
+
+        start thisEntity<HudMenu>.UpdateNewsAlert()
+    }
+
+    func RefreshMailTitles() {
+        RefreshMailTabs()
+
+        var mailCounts int = MailsManager.GetPlayerMailsCount(thisEntity<Player>.UserUID)
+
+        for mailIndex, mailTitle in GetChildren(_MailTitlesLayout) {
+            var icon entity<UIWidgetImage> = GetChildByName(mailTitle, "Icon") as entity<UIWidgetImage>
+            var titleLabel entity<UIWidgetLabel> = GetChildByName(mailTitle, "Title") as entity<UIWidgetLabel>
+            var timeLabel entity<UIWidgetLabel> = GetChildByName(mailTitle, "TimeLabel") as entity<UIWidgetLabel>
+            var expiredIcon entity<UIWidgetImage> = GetChildByName(mailTitle, "ExpiredIcon") as entity<UIWidgetImage>
+
+            if (mailIndex >= MAX_NOTICE_MAILS && _CurrentMailTab == MailsDefinitions.HUD_MAIL_TAB_NOTICE) || 
+               (mailIndex >= mailCounts && _CurrentMailTab == MailsDefinitions.HUD_MAIL_TAB_SYSTEM) {
+                mailTitle<UIWidget>.IsVisible = false
+                continue
+            }
+
+            mailTitle<UIWidget>.IsVisible = true
+            icon<UIWidgetImage>.SpriteName = MAIL_ICON[_CurrentMailTab]
+            timeLabel<UIWidget>.IsVisible = (_CurrentMailTab == MailsDefinitions.HUD_MAIL_TAB_SYSTEM)
+            expiredIcon<UIWidget>.IsVisible = (_CurrentMailTab == MailsDefinitions.HUD_MAIL_TAB_SYSTEM)
+
+            mailTitle<UIWidgetButton>.GradientTop = DEFAULT_TAB_TOP
+            mailTitle<UIWidgetButton>.GradientBottom = DEFAULT_TAB_BOTTOM
+            titleLabel<UIWidgetLabel>.Color = DEFAULT_TEXT_COLOR
+            timeLabel<UIWidgetLabel>.Color = DEFAULT_TEXT_COLOR
+            expiredIcon<UIWidgetImage>.Color = DEFAULT_TEXT_COLOR
+        }
+
+        var currentMailTitle = GetChildByIndex(_MailTitlesLayout, _SelectingMailIndex) as entity<UIWidget>
+        var currentTitleLabel = GetChildByName(currentMailTitle, "Title") as entity<UIWidgetLabel>
+        var currentTimeLabel = GetChildByName(currentMailTitle, "TimeLabel") as entity<UIWidgetLabel>
+        var currentExpiredIcon = GetChildByName(currentMailTitle, "ExpiredIcon") as entity<UIWidgetImage>
+
+        currentMailTitle<UIWidgetButton>.GradientTop = ACTIVE_TAB_TOP
+        currentMailTitle<UIWidgetButton>.GradientBottom = ACTIVE_TAB_BOTTOM
+        currentTitleLabel<UIWidgetLabel>.Color = ACTIVE_TEXT_COLOR
+        currentTimeLabel<UIWidgetLabel>.Color = ACTIVE_TEXT_COLOR
+        currentExpiredIcon<UIWidgetImage>.Color = ACTIVE_TEXT_COLOR
+    }
+
+    // ==========================
+    // Notice Mails
+    // ==========================
+
+    func UpdateNoticeMails() {
+        RefreshMailTitles()
+
+        _MailsCount<UIWidget>.IsVisible = false
+
+        UpdateNoticeTitles()
+        UpdateNoticeContent()
+    }
+
+    func UpdateNoticeTitles() {
+        var mailTitles List<entity<UIWidget>> = GetChildren(_MailTitlesLayout) as List<entity<UIWidget>>
+        for mailIndex, mailTitle in mailTitles {
+            var titleLabel entity<UIWidgetLabel> = GetChildByName(mailTitle, "Title") as entity<UIWidgetLabel>
+            titleLabel<UIWidgetLabel>.Content = MAIL_NOTICE_TITLE[mailIndex]
+        }
+    }
+
+    func UpdateNoticeContent() {
+        _MailContentLabel<UIWidgetLabel>.Content = MAIL_NOTICE_CONTENT[_SelectingMailIndex]
+        _NextVersionLabel<UIWidget>.IsVisible = (_SelectingMailIndex == 0)
+    }
+
+    // ==========================
+    // System Mails
+    // ==========================
+
+    func UpdateSystemMails() {
+        UpdateSystemTitles()
+        RefreshMailTitles()
+
+        _MailsCount<UIWidgetLabel>.Content = LocString{"HUD_MAIL_COUNT", {MailsManager.GetPlayerMailsCount(thisEntity<Player>.UserUID), MailsDefinitions.MAX_MAILS}}
+        _MailsCount<UIWidget>.IsVisible = true
+
+        UpdateSystemContent()
+    }
+
+    func UpdateSystemTitles() {
+        var playerUID UUID = thisEntity<Player>.UserUID
+        var currentMails List<Map<string, object>> = MailsManager.GetPlayerMails(playerUID)
+
+        var titleWidgetsCount int = List.Length(GetChildren(_MailTitlesLayout) as List<entity<UIWidget>>)
+        var templateTitleWidget entity<UIWidget> = GetChildByIndex(_MailTitlesLayout, 0) as entity<UIWidget>
+
+        while titleWidgetsCount < List.Length(currentMails) {
+            StdLib.Clone(out var clonedTitleWidget, templateTitleWidget)
+            titleWidgetsCount += 1
+        }
+
+        for mailIndex, mail in currentMails {
+            var mailTitle entity<UIWidget> = GetChildByIndex(_MailTitlesLayout, mailIndex) as entity<UIWidget>
+            var timeLabel entity<UIWidgetLabel> = GetChildByName(mailTitle, "TimeLabel") as entity<UIWidgetLabel>
+            var mailTitleLabel entity<UIWidgetLabel> = GetChildByName(mailTitle, "Title") as entity<UIWidgetLabel>
+
+            mailTitle<UIWidget>.IsVisible = true
+            timeLabel<UIWidgetLabel>.Content = LocString{"HUD_REWARD_DATE", {MailsManager.GetExpireDatesLeft(playerUID, mailIndex)}}
+
+            if mail[MailsDefinitions.DATA_MAIL_IS_CONFIG] == true {
+                mailTitleLabel<UIWidgetLabel>.Content = LocString{MailConfigs.GetGiftNameById(mail[MailsDefinitions.DATA_MAIL_ID] as int), {}}
+            } else {
+                mailTitleLabel<UIWidgetLabel>.Content = MailConfigs.GetMailTitleById(mail[MailsDefinitions.DATA_MAIL_ID] as int)
+            }
+        }
+    }
+
+    func UpdateSystemContent() {
+        var playerUID UUID = thisEntity<Player>.UserUID
+        var currentMail Map<string, object> = MailsManager.GetPlayerMailByIndex(playerUID, _SelectingMailIndex)
+
+        var isConfigMail bool = currentMail[MailsDefinitions.DATA_MAIL_IS_CONFIG] as bool
+        var mailContent StringOrLocString
+        if isConfigMail {
+            mailContent = LocString{"HUD_REWARD_NOT_RECEIVE", {}}
+        } else {
+            mailContent = MailConfigs.GetMailContentById(currentMail[MailsDefinitions.DATA_MAIL_ID] as int)
+        }
+
+        var rewardTypes List<string> = currentMail[MailsDefinitions.DATA_MAIL_REWARD_TYPES] as List<string>
+        if List.Length(rewardTypes) == 0 {
+            _MailContentLabel<UIWidgetLabel>.Content = LocString{"HUD_MAIL_NO_REWARD", {}}
+            _ClaimButton<UIWidget>.IsVisible = false
+        } else {
+            _MailContentLabel<UIWidgetLabel>.Content = mailContent
+            _ClaimButton<UIWidget>.IsVisible = true
+        }
+
+        UpdateSystemRewards(currentMail)
+    }
+
+    func UpdateSystemRewards(mailDetails Map<string, object>) {
+        var rewardTypes List<string> = mailDetails[MailsDefinitions.DATA_MAIL_REWARD_TYPES] as List<string>
+        var rewardValues List<Map<string, object>> = mailDetails[MailsDefinitions.DATA_MAIL_REWARD_VALUES] as List<Map<string, object>>
+        var rewardAmounts List<int> = mailDetails[MailsDefinitions.DATA_MAIL_REWARD_AMOUNTS] as List<int>
+
+        for key, rewardWidget in _RewardWidgets {
+            if key >= List.Length(rewardTypes) {
+                rewardWidget<UIWidget>.IsVisible = false
+                continue
+            }
+
+            // UIUtils.UpdateRewardWidgetV2(
+            //     rewardWidget,
+            //     Map<RequestParameter, object>{
+            //         RequestParameter.PlayerUID: thisEntity<Player>.UserUID,
+            //         RequestParameter.RewardType: rewardTypes[key],
+            //         RequestParameter.RewardValue: rewardValues[key],
+            //         RequestParameter.RewardAmount: rewardAmounts[key],
+            //     },
+            //     false,
+            //     false,
+            // )
+            rewardWidget<UIWidget>.IsVisible = true
+        }
+    }
+
+    // ==========================
+    // Handle Actions
+    // ==========================
+
+    func HandleSwitchMail(mailIndex int) {
+        _SelectingMailIndex = mailIndex
+
+        RefreshMailTitles()
+
+        if _CurrentMailTab == MailsDefinitions.HUD_MAIL_TAB_NOTICE {
+            UpdateNoticeContent()
+        } else {
+            UpdateSystemContent()
+        }
+    }
+
+    func HandleClaimMail() {
+        MailsManager.RequestClaimMail(
+            Map<string, object>{
+                RequestParams.PLAYER_UID: thisEntity<Player>.UserUID,
+                RequestParams.MAIL_INDEX: _SelectingMailIndex,
+            },
+            out var statusCode,
+            out var claimedMail,
+        )
+    }
+}

@@ -75,6 +75,89 @@
               "scriptName": "ShowButton"
             }
           ]
+        },
+        {
+          "refer": {
+            "fileId": "5wvsh78iuot-mgisk65k-qvyqt6op8ta",
+            "filePath": "Assets\\HUDs\\Mail.ui",
+            "_tag": {
+              "type": "GFileRefer"
+            },
+            "fileType": "ui"
+          },
+          "scriptName": "Mail",
+          "children": [
+            {
+              "id": "R4hxxwTY",
+              "scriptName": "TabsLayout"
+            },
+            {
+              "id": "rmYYbyNa",
+              "scriptName": "MailContent"
+            },
+            {
+              "id": "q2GZKBfr",
+              "scriptName": "MailTitlesLayout"
+            },
+            {
+              "id": "m194T2wW",
+              "scriptName": "RewardsLayout"
+            },
+            {
+              "id": "Ixqea0qN",
+              "scriptName": "NextVersionLabel"
+            },
+            {
+              "id": "vtvvCqgN",
+              "scriptName": "ClaimButton"
+            },
+            {
+              "id": "XtZhvpOH",
+              "scriptName": "MailsCount"
+            },
+            {
+              "id": "jTRMPcUh",
+              "scriptName": "NoticeContent"
+            },
+            {
+              "id": "cL0d6798",
+              "scriptName": "SystemContent"
+            }
+          ]
+        },
+        {
+          "refer": {
+            "fileId": "1bhwi18nk58-mgrr4pxz-5iynw5v49wc",
+            "filePath": "Assets\\HUDs\\Menu.ui",
+            "_tag": {
+              "type": "GFileRefer"
+            },
+            "fileType": "ui"
+          },
+          "scriptName": "Menu",
+          "children": [
+            {
+              "id": "rdjNsNcW",
+              "scriptName": "ExpandButton"
+            },
+            {
+              "id": "ROrbGBub",
+              "scriptName": "ExpandTools"
+            },
+            {
+              "id": "VXdxp3qM",
+              "scriptName": "ExpandIcon"
+            },
+            {
+              "id": "XdtTzrYf",
+              "scriptName": "AlertMenuIcon"
+            },
+            {
+              "id": "nX4dp9nD",
+              "scriptName": "AlertMailIcon",
+              "_isNewInSession": true
+            }
+          ]
         }
       ]
     },
@@ -120,6 +203,30 @@
           },
           "scriptName": "ItemIcon",
           "children": []
+        },
+        {
+          "refer": {
+            "fileId": "c57b6e05261ea546542a6b002a56c725",
+            "filePath": "lib://fftextures/WorkshopIconLibrary/Icon_Chat_Speaker.png",
+            "_tag": {
+              "type": "GFileRefer"
+            },
+            "fileType": "texture"
+          },
+          "scriptName": "MailNoticeIcon",
+          "children": []
+        },
+        {
+          "refer": {
+            "fileId": "f32e99f724d9cb7132e69fa108a7e068",
+            "filePath": "lib://fftextures/WorkshopIconLibrary/T_34_M_WS_ICON_FOLDER.png",
+            "_tag": {
+              "type": "GFileRefer"
+            },
+            "fileType": "texture"
+          },
+          "scriptName": "MailSystemIcon",
+          "children": []
         }
       ]
     },
@@ -157,7 +264,32 @@
     },
     "csv": {
       "id": "csv",
-      "children": []
+      "children": [
+        {
+          "refer": {
+            "fileId": "w7ytm0ulizj-mqpf53qu-3ahzxz1p854",
+            "filePath": "Assets\\CSV\\Mails\\MailDetails.csv",
+            "_tag": {
+              "type": "GFileRefer"
+            },
+            "fileType": "csv"
+          },
+          "scriptName": "MailDetails",
+          "children": []
+        },
+        {
+          "refer": {
+            "fileId": "kz90t69mm3-mi77uqar-dxxt5bpjsco",
+            "filePath": "Assets\\CSV\\Mails\\Gifts.csv",
+            "_tag": {
+              "type": "GFileRefer"
+            },
+            "fileType": "csv"
+          },
+          "scriptName": "Gifts",
+          "children": []
+        }
+      ]
     },
     "internalhudtype": {
       "id": "internalhudtype",
@@ -206,4 +338,4 @@
   },
   "children": []
 }
-//"{FE:{"v":"1.17.4335043","c":{"FF":5001},"s":100}
+//"{FE:{"v":"1.18.4494106","c":{"FF":5001},"s":100}
