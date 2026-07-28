@@ -1,0 +1,51 @@
+import "Player.fcc" as Player
+import "StdLibrary.fcc" as StdLib
+import "EditorGenLib.fcc" as EditorLib
+
+graph HudControls {
+    PLAYER_UI_SWITCH_TYPE_COUNT = 32
+    DEFAULT_UI_ON = List<PlayerUISwitchType>{
+        PlayerUISwitchType.MovingJoystick,
+        PlayerUISwitchType.Sprint,
+        PlayerUISwitchType.Attack,
+        PlayerUISwitchType.Jump,
+        PlayerUISwitchType.Crouch,
+        PlayerUISwitchType.Emote,
+        PlayerUISwitchType.QuickChat,
+        PlayerUISwitchType.Speaker,
+        PlayerUISwitchType.MicroPhone,
+        PlayerUISwitchType.Crosshairs,
+    }
+
+    event OnAwake() {
+        TurnOffDefaultUI()
+        TurnOnNeedUI()
+    }
+
+    func TurnOffDefaultUI() {
+        for i = 1, PLAYER_UI_SWITCH_TYPE_COUNT, 1 {
+            SetDefaultUIStatus(thisEntity<Player>, i as PlayerUISwitchType, CommonUISwitchValue.Close)
+        }
+    }
+
+    func TurnOnNeedUI() {
+        var playerRegion string = GetServerRegion()
+        for key, defaultUI in DEFAULT_UI_ON {
+            if defaultUI == PlayerUISwitchType.Speaker || defaultUI == PlayerUISwitchType.MicroPhone {
+                if playerRegion == "BR" || playerRegion == "ID" {
+                    continue
+                }
+            }
+
+            SetDefaultUIStatus(thisEntity<Player>, defaultUI, CommonUISwitchValue.Show)
+        }
+    }
+
+    func DisableAttack() {
+        SetDefaultUIStatus(thisEntity<Player>, PlayerUISwitchType.Attack, CommonUISwitchValue.Close)
+    }
+
+    func EnableAttack() {
+        SetDefaultUIStatus(thisEntity<Player>, PlayerUISwitchType.Attack, CommonUISwitchValue.Show)
+    }
+}

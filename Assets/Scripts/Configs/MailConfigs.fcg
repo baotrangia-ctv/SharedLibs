@@ -6,8 +6,8 @@ import "Strings.fcc" as Strings
 import "StdLibrary.fcc" as StdLib
 import "EditorGenLib.fcc" as EditorLib
 
-import "../Consts/MailsDefinitions.fcg" as MailsDefinitions
 import "../Utils/DataUtils.fcg" as DataUtils
+import "../Consts/MailsDefinitions.fcg" as MailsDefinitions
 
 static graph MailConfigs {
     INDEX_COLUMN int = 1
@@ -102,6 +102,14 @@ static graph MailConfigs {
         return _GiftId2Detail[id]
     }
 
+    func GetGiftTitleById(id int) StringOrLocString {
+        return GetMailTitleById(GetGiftDetailById(id))
+    }
+
+    func GetGiftContentById(id int) StringOrLocString {
+        return GetMailContentById(GetGiftDetailById(id))
+    }
+
     func GetGiftStartById(id int) int {
         return _GiftId2Start[id]
     }
@@ -120,5 +128,12 @@ static graph MailConfigs {
 
     func IsValidGiftId(id int) bool {
         return id > 0
+    }
+
+    func IsGiftWindowValid(id int, timestamp int) bool {
+        var startTime int = GetGiftStartById(id)
+        var endTime int = GetGiftEndById(id)
+
+        return timestamp >= startTime && timestamp <= endTime
     }
 }

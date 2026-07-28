@@ -6,11 +6,11 @@ import "StdLibrary.fcc" as StdLib
 import "EditorGenLib.fcc" as EditorLib
 import Res from "EditorGenLib.fcc"
 
-import "../../Consts/MailsDefinitions.fcg" as MailsDefinitions
-import "../../Consts/RequestParams.fcg" as RequestParams
+import "../../HUDs/Menu/HudMenu.fcg" as HudMenu
 import "../../Configs/MailConfigs.fcg" as MailConfigs
 import "../../Managers/MailsManager.fcg" as MailsManager
-import "../../HUDs/Menu/HudMenu.fcg" as HudMenu
+import "../../Consts/RequestParams.fcg" as RequestParams
+import "../../Consts/MailsDefinitions.fcg" as MailsDefinitions
 import "../../CoreLib/DatabaseController.fcg" as DatabaseController
 
 graph HudMails {
@@ -152,6 +152,7 @@ graph HudMails {
     }
 
     func UpdateTab(mailTab string, isActive bool) {
+        LogWarning("UpdateTab: " + mailTab + " " + isActive)
         var tabButton entity<UIWidgetButton> = _TabButtons[mailTab]
         var tabLabel entity<UIWidgetLabel> = GetChildByName(tabButton, "Label") as entity<UIWidgetLabel>
 
@@ -289,7 +290,7 @@ graph HudMails {
             timeLabel<UIWidgetLabel>.Content = LocString{"HUD_REWARD_DATE", {MailsManager.GetExpireDatesLeft(playerUID, mailIndex)}}
 
             if mail[MailsDefinitions.DATA_MAIL_IS_CONFIG] == true {
-                mailTitleLabel<UIWidgetLabel>.Content = LocString{MailConfigs.GetGiftNameById(mail[MailsDefinitions.DATA_MAIL_ID] as int), {}}
+                mailTitleLabel<UIWidgetLabel>.Content = MailConfigs.GetGiftTitleById(mail[MailsDefinitions.DATA_MAIL_ID] as int)
             } else {
                 mailTitleLabel<UIWidgetLabel>.Content = MailConfigs.GetMailTitleById(mail[MailsDefinitions.DATA_MAIL_ID] as int)
             }
@@ -331,19 +332,18 @@ graph HudMails {
                 continue
             }
 
-            // UIUtils.UpdateRewardWidgetV2(
-            //     rewardWidget,
-            //     Map<RequestParameter, object>{
-            //         RequestParameter.PlayerUID: thisEntity<Player>.UserUID,
-            //         RequestParameter.RewardType: rewardTypes[key],
-            //         RequestParameter.RewardValue: rewardValues[key],
-            //         RequestParameter.RewardAmount: rewardAmounts[key],
-            //     },
-            //     false,
-            //     false,
-            // )
-            rewardWidget<UIWidget>.IsVisible = true
+            UpdateRewardWidget(rewardWidget, rewardTypes[key], rewardValues[key], rewardAmounts[key])
         }
+    }
+
+    func UpdateRewardWidget(rewardWidget entity<UIWidget>, rewardType string, rewardValue Map<string, object>, rewardAmount int) {
+        var rewardIcon entity<UIWidgetImage> = GetChildByName(rewardWidget, "RewardIcon") as entity<UIWidgetImage>
+        var rewardAmountLabel entity<UIWidgetLabel> = GetChildByName(rewardWidget, "RewardAmount") as entity<UIWidgetLabel>
+
+        // rewardIcon<UIWidgetImage>.SpriteName = ...
+        rewardAmountLabel<UIWidgetLabel>.Content = "x" + rewardAmount
+
+        rewardWidget<UIWidget>.IsVisible = true
     }
 
     // ==========================

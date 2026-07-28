@@ -4,8 +4,11 @@ import "StdLibrary.fcc" as StdLib
 import "EditorGenLib.fcc" as EditorGenLib
 
 import "./HudMenu.fcg" as HudMenu
+import "../Mails/HudMails.fcg" as HudMails
+import "../Collection/HudCollection.fcg" as HudCollection
 
 graph HudMenuControl {
+
     event OnTapButton(player entity<Player>, button entity<UIWidgetButton>) {
         start HandleTapButton(player, button)
     }
@@ -20,9 +23,21 @@ graph HudMenuControl {
             player<HudMenu>.ShowExtraTools()
             return
         }
-        
+
         if button<Entity>.Name == "CloseButton" {
             player<HudMenu>.HideExtraTools()
+            return
+        }
+
+        if button<Entity>.Name == "MailsButton" {
+            player<HudMenu>.HideExtraTools()
+            player<HudMails>.OpenMail()
+            return
+        }
+
+        if button<Entity>.Name == "CollectionButton" {
+            player<HudMenu>.HideExtraTools()
+            player<HudCollection>.OpenCollection()
             return
         }
     }

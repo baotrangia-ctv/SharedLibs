@@ -254,21 +254,21 @@ static graph MailsManager {
         var mailIndex int = payload[MailsDefinitions.PAYLOAD_MAIL_INDEX] as int
 
         if !Map.ContainKey(_PlayerMails, playerUID) {
-            statusCode = MailsDefinitions.STATUS_PLAYER_DISCONNECT
+            statusCode = StatusCodes.STATUS_PLAYER_DISCONNECT
             return
         }
 
         if _IsClaimingMail[playerUID] {
-            statusCode = MailsDefinitions.STATUS_ACTION_TOO_FAST
+            statusCode = StatusCodes.STATUS_ACTION_TOO_FAST
             return
         }
 
         if !IsValidMailIndex(playerUID, mailIndex) {
-            statusCode = MailsDefinitions.STATUS_INVALID_VALUE
+            statusCode = StatusCodes.STATUS_INVALID_VALUE
             return
         }
 
-        statusCode = MailsDefinitions.STATUS_NO_ERROR
+        statusCode = StatusCodes.STATUS_NO_ERROR
     }
 
     func ProcessClaimMail(payload Map<string, object>, out var claimedMail Map<string, object>) {
@@ -455,6 +455,16 @@ static graph MailsManager {
         if mailDetails[MailsDefinitions.DATA_MAIL_IS_CONFIG] == true {
             var giftId int = mailDetails[MailsDefinitions.DATA_MAIL_ID] as int
             var giftRewards List<Map<string, object>> = MailConfigs.GetGiftRewardsById(giftId)
+
+            var rewardTypes List<string> = List<string>{}
+            var rewardValues List<string> = List<string>{}
+            var rewardAmounts List<int> = List<int>{}
+
+            for _, reward in giftRewards {
+                List.Append(rewardTypes, reward[MailsDefinitions.DATA_MAIL_REWARD_TYPES] as string)
+                List.Append(rewardValues, reward[MailsDefinitions.DATA_MAIL_REWARD_VALUES] as string)
+                List.Append(rewardAmounts, reward[MailsDefinitions.DATA_MAIL_REWARD_AMOUNTS] as int)
+            }
 
             result[MailsDefinitions.DATA_MAIL_REWARD_TYPES] = rewardTypes
             result[MailsDefinitions.DATA_MAIL_REWARD_VALUES] = rewardValues
