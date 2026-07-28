@@ -67,8 +67,32 @@
   "ecaScript": null,
   "ecaScripts": [
     {
+      "fileId": "zt0l24nbin-mgg31xqo-cao6bc0brs",
+      "filePath": "Assets\\Scripts\\HUDs\\HudControls.fcg",
+      "_tag": {
+        "type": "GFileRefer"
+      },
+      "fileType": "ugcscript"
+    },
+    {
       "fileId": "h3vhr0cm9w-mpanti1a-5uxlqxzbbf",
       "filePath": "Assets\\Scripts\\HUDs\\Collection\\HudCollection.fcg",
+      "_tag": {
+        "type": "GFileRefer"
+      },
+      "fileType": "ugcscript"
+    },
+    {
+      "fileId": "b4pymvz7ctp-mgs6rw2l-vuitdf7rief",
+      "filePath": "Assets\\Scripts\\HUDs\\Menu\\HudMenu.fcg",
+      "_tag": {
+        "type": "GFileRefer"
+      },
+      "fileType": "ugcscript"
+    },
+    {
+      "fileId": "m8en8oema3-ms3t1y9q-8oymrq0eo2u",
+      "filePath": "Assets\\Scripts\\HUDs\\Mails\\HudMails.fcg",
       "_tag": {
         "type": "GFileRefer"
       },
@@ -278,7 +302,8 @@
     "playerskill_auroraboy_cd_percent": 100,
     "playerskill_eclipseman_cd_percent": 100,
     "DisableEnemyFootstepVibrate": false,
-    "EnableCheckPlayerMatchState": false
+    "EnableCheckPlayerMatchState": false,
+    "receive_damage": 100
   },
   "physicsData": {
     "ECCTParam_Gravity": {
@@ -310,4 +335,4 @@
   "usePDV2": false,
   "showSwitch": false
 }
-//"{FE:{"v":"1.17.4335043","c":{"FF":5001},"s":100}
+//"{FE:{"v":"1.18.4494106","c":{"FF":5001},"s":100}

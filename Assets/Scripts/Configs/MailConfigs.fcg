@@ -1,0 +1,139 @@
+import "Map.fcc" as Map
+import "List.fcc" as List
+import "Convert.fcc" as Convert
+import "CSVData.fcc" as CSVData
+import "Strings.fcc" as Strings
+import "StdLibrary.fcc" as StdLib
+import "EditorGenLib.fcc" as EditorLib
+
+import "../Utils/DataUtils.fcg" as DataUtils
+import "../Consts/MailsDefinitions.fcg" as MailsDefinitions
+
+static graph MailConfigs {
+    INDEX_COLUMN int = 1
+
+    _MailDetailId2Title Map<int, StringOrLocString>
+    _MailDetailId2Content Map<int, StringOrLocString>
+
+    _RewardId2ItemType Map<int, string>
+    _RewardId2Quantity Map<int, int>
+    _RewardId2Value Map<int, List<object>>
+
+    _GiftId2Code Map<int, string>
+    _GiftId2Detail Map<int, int>
+    _GiftId2Start Map<int, int>
+    _GiftId2End Map<int, int>
+    _GiftId2Reuse Map<int, bool>
+    _GiftId2Rewards Map<int, List<Map<string, object>>>
+
+    event OnAwake() {
+        _MailDetailId2Title = Map<int, StringOrLocString>{}
+        _MailDetailId2Content = Map<int, StringOrLocString>{}
+
+        _GiftId2Code = Map<int, string>{}
+        _GiftId2Detail = Map<int, int>{}
+        _GiftId2Start = Map<int, int>{}
+        _GiftId2End = Map<int, int>{}
+        _GiftId2Reuse = Map<int, bool>{}
+        _GiftId2Rewards = Map<int, List<Map<string, object>>>{}
+
+        GetMailDetailConfigFromCSV()
+        GetGiftsConfigFromCSV()
+    }
+
+    func GetMailDetailConfigFromCSV() {
+        var mailDetailConfig List<List<object>> = CSVData.ReadCSV(EResCSV.MailDetails)
+        for i = 2, List.Length(mailDetailConfig), 1 {
+            var mailDetailInfo List<object> = mailDetailConfig[i]
+
+            var mailDetailId int = mailDetailInfo[MailsDefinitions.CSV_MAIL_DETAILS_ID as int] as int
+
+            _MailDetailId2Title[mailDetailId] = LocString{mailDetailInfo[MailsDefinitions.CSV_MAIL_DETAILS_TITLE as int] as string, {}}
+            _MailDetailId2Content[mailDetailId] = LocString{mailDetailInfo[MailsDefinitions.CSV_MAIL_DETAILS_CONTENT as int] as string, {}}
+        }
+    }
+
+    func GetGiftsConfigFromCSV() {
+        var giftsConfig List<List<object>> = CSVData.ReadCSV(EResCSV.Gifts)
+        for i = 2, List.Length(giftsConfig), 1 {
+            var giftInfo List<object> = giftsConfig[i]
+
+            var giftId int = giftInfo[MailsDefinitions.CSV_GIFTS_ID as int] as int
+
+            _GiftId2Code[giftId] = giftInfo[MailsDefinitions.CSV_GIFTS_CODE as int] as string
+            _GiftId2Detail[giftId] = giftInfo[MailsDefinitions.CSV_GIFTS_DETAILS as int] as int
+            _GiftId2Start[giftId] = giftInfo[MailsDefinitions.CSV_GIFTS_START as int] as int
+            _GiftId2End[giftId] = giftInfo[MailsDefinitions.CSV_GIFTS_END as int] as int
+            _GiftId2Rewards[giftId] = DataUtils.JsonStringToListKeyValueV2(giftInfo[MailsDefinitions.CSV_GIFTS_REWARDS as int] as string)
+            _GiftId2Reuse[giftId] = giftInfo[MailsDefinitions.CSV_GIFTS_REUSE as int] as bool
+        }
+    }
+
+    // ==========================
+    // Mail Details
+    // ==========================
+
+    func GetMailTitleById(mailId int) StringOrLocString {
+        return _MailDetailId2Title[mailId]
+    }
+
+    func GetMailContentById(mailId int) StringOrLocString {
+        return _MailDetailId2Content[mailId]
+    }
+
+    // ==========================
+    // Gifts
+    // ==========================
+
+    func GetGiftCodeById(id int) string {
+        return _GiftId2Code[id]
+    }
+
+    func GetGiftIdByCode(code string) int {
+        for key, value in _GiftId2Code {
+            if value == code {
+                return key
+            }
+        }
+        return -1
+    }
+
+    func GetGiftDetailById(id int) int {
+        return _GiftId2Detail[id]
+    }
+
+    func GetGiftTitleById(id int) StringOrLocString {
+        return GetMailTitleById(GetGiftDetailById(id))
+    }
+
+    func GetGiftContentById(id int) StringOrLocString {
+        return GetMailContentById(GetGiftDetailById(id))
+    }
+
+    func GetGiftStartById(id int) int {
+        return _GiftId2Start[id]
+    }
+
+    func GetGiftEndById(id int) int {
+        return _GiftId2End[id]
+    }
+
+    func GetGiftReuseById(id int) bool {
+        return _GiftId2Reuse[id]
+    }
+
+    func GetGiftRewardsById(id int) List<Map<string, object>> {
+        return List.Clone(_GiftId2Rewards[id]) as List<Map<string, object>>
+    }
+
+    func IsValidGiftId(id int) bool {
+        return id > 0
+    }
+
+    func IsGiftWindowValid(id int, timestamp int) bool {
+        var startTime int = GetGiftStartById(id)
+        var endTime int = GetGiftEndById(id)
+
+        return timestamp >= startTime && timestamp <= endTime
+    }
+}

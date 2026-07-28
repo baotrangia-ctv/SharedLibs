@@ -1,0 +1,17 @@
+import "StdLibrary.fcc" as StdLib
+import "EditorGenLib.fcc" as EditorLib
+
+static graph StatusCodes {
+    STATUS_NO_ERROR = "NoError"
+    STATUS_INVALID_VALUE = "InvalidValue"
+    STATUS_ACTION_TOO_FAST = "ActionTooFast"
+
+    // Player
+    STATUS_PLAYER_DISCONNECT = "PlayerDisconnect"
+    STATUS_PLAYER_FULL_MAIL = "PlayerFullMail"
+
+    // Mails
+    STATUS_GIFT_CODE_INVALID = "GiftCodeInvalid"
+    STATUS_GIFT_CODE_HAS_USE = "GiftCodeHasUsed"
+    STATUS_GIFT_CODE_EXPIRED = "GiftCodeExpired"
+}

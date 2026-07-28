@@ -6,8 +6,14 @@
   "_entityId": "XtMCJRad",
   "children": [],
   "prefabVariant": null,
-  "activeValue": null,
-  "unlockedValue": null,
+  "activeValue": {
+    "selfValue": true,
+    "valueTag": "activeValue"
+  },
+  "unlockedValue": {
+    "selfValue": true,
+    "valueTag": "unlockedValue"
+  },
   "editorLockValue": false,
   "editorVisibleValue": true,
   "modId": 31,
@@ -28,4 +34,4 @@
   "craftlandLeadboard": null,
   "showSwitch": true
 }
-//"{FE:{"v":"1.17.4335043","c":{"FF":5001},"s":100}
+//"{FE:{"v":"1.18.4494106","c":{"FF":5001},"s":100}

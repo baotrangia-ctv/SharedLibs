@@ -1,0 +1,4 @@
+ID,Code,Details,Start,End,Rewards,Reuse
+int,string,int,int,int,string,bool
+1,GIFTCODE,1,1764821211,1766793600,{RT:1;RV:;RA:1},false
+2,LOGINREWARD1,2,-1,-1,{RT:1;RV:;RA:1},true

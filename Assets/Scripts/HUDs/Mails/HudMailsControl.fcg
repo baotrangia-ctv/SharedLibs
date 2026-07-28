@@ -1,0 +1,47 @@
+import "Hud.fcc" as Hud
+import "List.fcc" as List
+import "StdLibrary.fcc" as StdLib
+import "EditorGenLib.fcc" as EditorGenLib
+
+import "./HudMails.fcg" as HudMails
+import "../../Consts/MailsDefinitions.fcg" as MailsDefinitions
+
+graph HudMailsControl {
+
+    event OnTapButton(player entity<Player>, button entity<UIWidgetButton>) {
+        start HandleTapButton(player, button)
+    }
+
+    async func HandleTapButton(player entity<Player>, button entity<UIWidgetButton>) {
+        var parentUI entity<CustomUI> = button<UIWidget>.ParentUI
+        if parentUI == nil {
+            return
+        }
+
+        if button<Entity>.Name == "CloseMailButton" || button<Entity>.Name == "CloseButton" {
+            player<HudMails>.CloseMail()
+            return
+        }
+
+        if button<Entity>.Name == "TabNoticeButton" {
+            player<HudMails>.SwitchMailTab(MailsDefinitions.HUD_MAIL_TAB_NOTICE)
+            return
+        }
+
+        if button<Entity>.Name == "TabSystemButton" {
+            player<HudMails>.SwitchMailTab(MailsDefinitions.HUD_MAIL_TAB_SYSTEM)
+            return
+        }
+
+        if button<Entity>.Name == "ClaimButton" {
+            player<HudMails>.HandleClaimMail()
+            return
+        }
+
+        if button<Entity>.Name == "Mail" || button<Entity>.Name == "Mail (1)" || button<Entity>.Name == "Mail (2)" {
+            var mailTitlesLayout entity<UIWidgetLayout> = GetParent(button) as entity<UIWidgetLayout>
+            var mailIndex int = List.IndexOf(GetChildren(mailTitlesLayout), button)
+            player<HudMails>.HandleSwitchMail(mailIndex)
+        }
+    }
+}

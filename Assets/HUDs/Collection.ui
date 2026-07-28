@@ -7,202 +7,6 @@
   "_entityId": "FhLmaxDS",
   "children": [
     {
-      "_entityName": "ShowButton",
-      "_tag": {
-        "type": "UIButtonEntity",
-        "resourceId": ""
-      },
-      "_entityId": "lXeSd3RE",
-      "children": [
-        {
-          "_entityName": "Text",
-          "_tag": {
-            "type": "UITextEntity",
-            "resourceId": ""
-          },
-          "_entityId": "Cm9X7zLn",
-          "children": [],
-          "prefabVariant": null,
-          "activeValue": {
-            "selfValue": true,
-            "valueTag": "activeValue"
-          },
-          "unlockedValue": null,
-          "editorLockValue": false,
-          "editorVisibleValue": true,
-          "propsData": {
-            "activeSelf": true,
-            "transform": {
-              "rotate": 0,
-              "anchorMin": {
-                "x": 0.5,
-                "y": 0.5
-              },
-              "anchorMax": {
-                "x": 0.5,
-                "y": 0.5
-              },
-              "pivot": {
-                "x": 0.5,
-                "y": 0.5
-              },
-              "anchoredPosition": {
-                "x": 0,
-                "y": 0
-              },
-              "sizeDelta": {
-                "x": 120,
-                "y": 50
-              }
-            },
-            "alpha": 100,
-            "priority": 0,
-            "text": {
-              "value": "Show Collection",
-              "key": "",
-              "font": "Default",
-              "fontSize": 24,
-              "fontStyle": {
-                "bold": false,
-                "italic": false,
-                "underline": false
-              },
-              "color": "#ffffff",
-              "alignment": {
-                "h": "center",
-                "v": "middle"
-              },
-              "lineSpacing": 0,
-              "background": false,
-              "backgroundColor": "#e7b200",
-              "overflow": 0,
-              "backgroundRGBA": {
-                "r": 0,
-                "g": 0,
-                "b": 0,
-                "a": 0
-              },
-              "shadow": false,
-              "shadowColor": "#000000",
-              "shadowOffset": {
-                "x": 1,
-                "y": 1
-              }
-            }
-          },
-          "ecaScripts": [],
-          "ecaProps": {
-            "HudLabelWidget": {},
-            "HudWidget": {},
-            "Entity": {}
-          },
-          "componentList": [],
-          "entityTagData": {
-            "tagPointers": []
-          }
-        }
-      ],
-      "prefabVariant": null,
-      "activeValue": {
-        "selfValue": true,
-        "valueTag": "activeValue"
-      },
-      "unlockedValue": null,
-      "editorLockValue": false,
-      "editorVisibleValue": true,
-      "propsData": {
-        "activeSelf": true,
-        "transform": {
-          "rotate": 0,
-          "anchorMin": {
-            "x": 0.5,
-            "y": 0.5
-          },
-          "anchorMax": {
-            "x": 0.5,
-            "y": 0.5
-          },
-          "pivot": {
-            "x": 0.5,
-            "y": 0.5
-          },
-          "anchoredPosition": {
-            "x": 0,
-            "y": 0
-          },
-          "sizeDelta": {
-            "x": 150,
-            "y": 50
-          }
-        },
-        "alpha": 100,
-        "priority": 0,
-        "button": {
-          "spriteName": {
-            "fileId": "4fea53c19488f972a3e911c826b1bea7",
-            "filePath": "lib://fftextures/WorkshopIconLibrary/UGC_Btn_02_Big_Normal.png",
-            "_tag": {
-              "type": "GFileRefer"
-            },
-            "fileType": "texture"
-          },
-          "normal": "#FFFFFF",
-          "highlight": "#e2a222",
-          "pressed": "#C5C5C5",
-          "disabled": "#494949",
-          "onClicks": [],
-          "enableBorderImage": true,
-          "clickHandlers": [],
-          "disableCollider": false,
-          "fillType": 1,
-          "slicedBorder": {
-            "left": 0,
-            "right": 0,
-            "top": 0,
-            "bottom": 0
-          },
-          "tiledBorder": {
-            "left": 0,
-            "right": 0,
-            "top": 0,
-            "bottom": 0
-          },
-          "centerInvisible": false,
-          "fillDir": 0,
-          "fillAmount": 0,
-          "invertFill": false,
-          "reverse": {
-            "x": false,
-            "y": false
-          },
-          "flip": 0,
-          "gradient": 1,
-          "gradientTop": {
-            "r": 255,
-            "g": 255,
-            "b": 255,
-            "a": 1
-          },
-          "gradientBottom": {
-            "r": 255,
-            "g": 255,
-            "b": 255,
-            "a": 1
-          }
-        }
-      },
-      "ecaScripts": [],
-      "ecaProps": {
-        "HudButtonWidget": {},
-        "HudWidget": {},
-        "Entity": {}
-      },
-      "componentList": [],
-      "entityTagData": {
-        "tagPointers": []
-      }
-    },
-    {
       "_entityName": "Collection",
       "_tag": {
         "type": "UIEmptyEntity",
@@ -342,7 +146,10 @@
                 "selfValue": true,
                 "valueTag": "activeValue"
               },
-              "unlockedValue": null,
+              "unlockedValue": {
+                "selfValue": true,
+                "valueTag": "unlockedValue"
+              },
               "editorLockValue": false,
               "editorVisibleValue": true,
               "propsData": {
@@ -519,7 +326,24 @@
                       "shadowOffset": {
                         "x": 2,
                         "y": 2
-                      }
+                      },
+                      "gradient": 0,
+                      "gradientTop": {
+                        "r": 255,
+                        "g": 255,
+                        "b": 255,
+                        "a": 1
+                      },
+                      "gradientBottom": {
+                        "r": 255,
+                        "g": 255,
+                        "b": 255,
+                        "a": 1
+                      },
+                      "outline": false,
+                      "outlineColor": "#000000",
+                      "outlineAlpha": 1,
+                      "outlineOffset": 1
                     }
                   },
                   "ecaScripts": [],
@@ -732,7 +556,11 @@
                     "g": 255,
                     "b": 255,
                     "a": 1
-                  }
+                  },
+                  "isApplyAnimation": false,
+                  "animationAtlasID": null,
+                  "animationFrameRate": 30,
+                  "animationLoop": true
                 }
               },
               "ecaScripts": [],
@@ -835,7 +663,24 @@
                           "shadowOffset": {
                             "x": 1,
                             "y": 1
-                          }
+                          },
+                          "gradient": 0,
+                          "gradientTop": {
+                            "r": 255,
+                            "g": 255,
+                            "b": 255,
+                            "a": 1
+                          },
+                          "gradientBottom": {
+                            "r": 255,
+                            "g": 255,
+                            "b": 255,
+                            "a": 1
+                          },
+                          "outline": false,
+                          "outlineColor": "#000000",
+                          "outlineAlpha": 1,
+                          "outlineOffset": 1
                         }
                       },
                       "ecaScripts": [],
@@ -1042,7 +887,24 @@
                           "shadowOffset": {
                             "x": 1,
                             "y": 1
-                          }
+                          },
+                          "gradient": 0,
+                          "gradientTop": {
+                            "r": 255,
+                            "g": 255,
+                            "b": 255,
+                            "a": 1
+                          },
+                          "gradientBottom": {
+                            "r": 255,
+                            "g": 255,
+                            "b": 255,
+                            "a": 1
+                          },
+                          "outline": false,
+                          "outlineColor": "#000000",
+                          "outlineAlpha": 1,
+                          "outlineOffset": 1
                         }
                       },
                       "ecaScripts": [],
@@ -1235,7 +1097,8 @@
                     "right": 0
                   },
                   "tableSpace": 0,
-                  "sortType": 0
+                  "sortType": 0,
+                  "ignoreInactive": false
                 }
               },
               "ecaScripts": [],
@@ -1354,7 +1217,11 @@
                             "g": 255,
                             "b": 255,
                             "a": 1
-                          }
+                          },
+                          "isApplyAnimation": false,
+                          "animationAtlasID": null,
+                          "animationFrameRate": 30,
+                          "animationLoop": true
                         }
                       },
                       "ecaScripts": [],
@@ -1458,7 +1325,11 @@
                             "g": 255,
                             "b": 255,
                             "a": 1
-                          }
+                          },
+                          "isApplyAnimation": false,
+                          "animationAtlasID": null,
+                          "animationFrameRate": 30,
+                          "animationLoop": true
                         }
                       },
                       "ecaScripts": [],
@@ -1548,7 +1419,24 @@
                           "shadowOffset": {
                             "x": 1,
                             "y": 1
-                          }
+                          },
+                          "gradient": 0,
+                          "gradientTop": {
+                            "r": 255,
+                            "g": 255,
+                            "b": 255,
+                            "a": 1
+                          },
+                          "gradientBottom": {
+                            "r": 255,
+                            "g": 255,
+                            "b": 255,
+                            "a": 1
+                          },
+                          "outline": false,
+                          "outlineColor": "#000000",
+                          "outlineAlpha": 1,
+                          "outlineOffset": 1
                         }
                       },
                       "ecaScripts": [],
@@ -1652,7 +1540,11 @@
                             "g": 252,
                             "b": 254,
                             "a": 1
-                          }
+                          },
+                          "isApplyAnimation": false,
+                          "animationAtlasID": null,
+                          "animationFrameRate": 30,
+                          "animationLoop": true
                         }
                       },
                       "ecaScripts": [],
@@ -1803,7 +1695,24 @@
                           "shadowOffset": {
                             "x": 1,
                             "y": 1
-                          }
+                          },
+                          "gradient": 0,
+                          "gradientTop": {
+                            "r": 255,
+                            "g": 255,
+                            "b": 255,
+                            "a": 1
+                          },
+                          "gradientBottom": {
+                            "r": 255,
+                            "g": 255,
+                            "b": 255,
+                            "a": 1
+                          },
+                          "outline": false,
+                          "outlineColor": "#000000",
+                          "outlineAlpha": 1,
+                          "outlineOffset": 1
                         }
                       },
                       "ecaScripts": [],
@@ -1893,7 +1802,24 @@
                           "shadowOffset": {
                             "x": 1,
                             "y": 1
-                          }
+                          },
+                          "gradient": 0,
+                          "gradientTop": {
+                            "r": 255,
+                            "g": 255,
+                            "b": 255,
+                            "a": 1
+                          },
+                          "gradientBottom": {
+                            "r": 255,
+                            "g": 255,
+                            "b": 255,
+                            "a": 1
+                          },
+                          "outline": false,
+                          "outlineColor": "#000000",
+                          "outlineAlpha": 1,
+                          "outlineOffset": 1
                         }
                       },
                       "ecaScripts": [],
@@ -1990,7 +1916,11 @@
                         "g": 255,
                         "b": 255,
                         "a": 1
-                      }
+                      },
+                      "isApplyAnimation": false,
+                      "animationAtlasID": null,
+                      "animationFrameRate": 30,
+                      "animationLoop": true
                     }
                   },
                   "ecaScripts": [],
@@ -2088,7 +2018,24 @@
                           "shadowOffset": {
                             "x": 1,
                             "y": 1
-                          }
+                          },
+                          "gradient": 0,
+                          "gradientTop": {
+                            "r": 255,
+                            "g": 255,
+                            "b": 255,
+                            "a": 1
+                          },
+                          "gradientBottom": {
+                            "r": 255,
+                            "g": 255,
+                            "b": 255,
+                            "a": 1
+                          },
+                          "outline": false,
+                          "outlineColor": "#000000",
+                          "outlineAlpha": 1,
+                          "outlineOffset": 1
                         }
                       },
                       "ecaScripts": [],
@@ -2198,7 +2145,11 @@
                                 "g": 255,
                                 "b": 255,
                                 "a": 1
-                              }
+                              },
+                              "isApplyAnimation": false,
+                              "animationAtlasID": null,
+                              "animationFrameRate": 30,
+                              "animationLoop": true
                             }
                           },
                           "ecaScripts": [],
@@ -2281,7 +2232,8 @@
                             "right": 0
                           },
                           "tableSpace": 0,
-                          "sortType": 0
+                          "sortType": 0,
+                          "ignoreInactive": false
                         }
                       },
                       "ecaScripts": [],
@@ -2379,7 +2331,11 @@
                         "g": 255,
                         "b": 255,
                         "a": 1
-                      }
+                      },
+                      "isApplyAnimation": false,
+                      "animationAtlasID": null,
+                      "animationFrameRate": 30,
+                      "animationLoop": true
                     }
                   },
                   "ecaScripts": [],
@@ -2476,7 +2432,11 @@
                     "g": 117,
                     "b": 117,
                     "a": 1
-                  }
+                  },
+                  "isApplyAnimation": false,
+                  "animationAtlasID": null,
+                  "animationFrameRate": 30,
+                  "animationLoop": true
                 }
               },
               "ecaScripts": [],
@@ -2602,7 +2562,11 @@
                                 "g": 255,
                                 "b": 255,
                                 "a": 1
-                              }
+                              },
+                              "isApplyAnimation": false,
+                              "animationAtlasID": null,
+                              "animationFrameRate": 30,
+                              "animationLoop": true
                             }
                           },
                           "ecaScripts": [],
@@ -2699,7 +2663,11 @@
                             "g": 255,
                             "b": 255,
                             "a": 1
-                          }
+                          },
+                          "isApplyAnimation": false,
+                          "animationAtlasID": null,
+                          "animationFrameRate": 30,
+                          "animationLoop": true
                         }
                       },
                       "ecaScripts": [],
@@ -2803,7 +2771,11 @@
                             "g": 255,
                             "b": 255,
                             "a": 1
-                          }
+                          },
+                          "isApplyAnimation": false,
+                          "animationAtlasID": null,
+                          "animationFrameRate": 30,
+                          "animationLoop": true
                         }
                       },
                       "ecaScripts": [],
@@ -2893,7 +2865,24 @@
                           "shadowOffset": {
                             "x": 1,
                             "y": 1
-                          }
+                          },
+                          "gradient": 0,
+                          "gradientTop": {
+                            "r": 255,
+                            "g": 255,
+                            "b": 255,
+                            "a": 1
+                          },
+                          "gradientBottom": {
+                            "r": 255,
+                            "g": 255,
+                            "b": 255,
+                            "a": 1
+                          },
+                          "outline": false,
+                          "outlineColor": "#000000",
+                          "outlineAlpha": 1,
+                          "outlineOffset": 1
                         }
                       },
                       "ecaScripts": [],
@@ -2990,7 +2979,24 @@
                               "shadowOffset": {
                                 "x": 1,
                                 "y": 1
-                              }
+                              },
+                              "gradient": 0,
+                              "gradientTop": {
+                                "r": 255,
+                                "g": 255,
+                                "b": 255,
+                                "a": 1
+                              },
+                              "gradientBottom": {
+                                "r": 255,
+                                "g": 255,
+                                "b": 255,
+                                "a": 1
+                              },
+                              "outline": false,
+                              "outlineColor": "#000000",
+                              "outlineAlpha": 1,
+                              "outlineOffset": 1
                             }
                           },
                           "ecaScripts": [],
@@ -3088,7 +3094,11 @@
                             "g": 255,
                             "b": 255,
                             "a": 1
-                          }
+                          },
+                          "isApplyAnimation": false,
+                          "animationAtlasID": null,
+                          "animationFrameRate": 30,
+                          "animationLoop": true
                         }
                       },
                       "ecaScripts": [],
@@ -3375,7 +3385,11 @@
                                 "g": 255,
                                 "b": 255,
                                 "a": 1
-                              }
+                              },
+                              "isApplyAnimation": false,
+                              "animationAtlasID": null,
+                              "animationFrameRate": 30,
+                              "animationLoop": true
                             }
                           },
                           "ecaScripts": [],
@@ -3472,7 +3486,11 @@
                             "g": 255,
                             "b": 255,
                             "a": 1
-                          }
+                          },
+                          "isApplyAnimation": false,
+                          "animationAtlasID": null,
+                          "animationFrameRate": 30,
+                          "animationLoop": true
                         }
                       },
                       "ecaScripts": [],
@@ -3576,7 +3594,11 @@
                             "g": 255,
                             "b": 255,
                             "a": 1
-                          }
+                          },
+                          "isApplyAnimation": false,
+                          "animationAtlasID": null,
+                          "animationFrameRate": 30,
+                          "animationLoop": true
                         }
                       },
                       "ecaScripts": [],
@@ -3666,7 +3688,24 @@
                           "shadowOffset": {
                             "x": 1,
                             "y": 1
-                          }
+                          },
+                          "gradient": 0,
+                          "gradientTop": {
+                            "r": 255,
+                            "g": 255,
+                            "b": 255,
+                            "a": 1
+                          },
+                          "gradientBottom": {
+                            "r": 255,
+                            "g": 255,
+                            "b": 255,
+                            "a": 1
+                          },
+                          "outline": false,
+                          "outlineColor": "#000000",
+                          "outlineAlpha": 1,
+                          "outlineOffset": 1
                         }
                       },
                       "ecaScripts": [],
@@ -3763,7 +3802,24 @@
                               "shadowOffset": {
                                 "x": 1,
                                 "y": 1
-                              }
+                              },
+                              "gradient": 0,
+                              "gradientTop": {
+                                "r": 255,
+                                "g": 255,
+                                "b": 255,
+                                "a": 1
+                              },
+                              "gradientBottom": {
+                                "r": 255,
+                                "g": 255,
+                                "b": 255,
+                                "a": 1
+                              },
+                              "outline": false,
+                              "outlineColor": "#000000",
+                              "outlineAlpha": 1,
+                              "outlineOffset": 1
                             }
                           },
                           "ecaScripts": [],
@@ -3861,7 +3917,11 @@
                             "g": 255,
                             "b": 255,
                             "a": 1
-                          }
+                          },
+                          "isApplyAnimation": false,
+                          "animationAtlasID": null,
+                          "animationFrameRate": 30,
+                          "animationLoop": true
                         }
                       },
                       "ecaScripts": [],
@@ -4148,7 +4208,11 @@
                                 "g": 255,
                                 "b": 255,
                                 "a": 1
-                              }
+                              },
+                              "isApplyAnimation": false,
+                              "animationAtlasID": null,
+                              "animationFrameRate": 30,
+                              "animationLoop": true
                             }
                           },
                           "ecaScripts": [],
@@ -4245,7 +4309,11 @@
                             "g": 255,
                             "b": 255,
                             "a": 1
-                          }
+                          },
+                          "isApplyAnimation": false,
+                          "animationAtlasID": null,
+                          "animationFrameRate": 30,
+                          "animationLoop": true
                         }
                       },
                       "ecaScripts": [],
@@ -4349,7 +4417,11 @@
                             "g": 255,
                             "b": 255,
                             "a": 1
-                          }
+                          },
+                          "isApplyAnimation": false,
+                          "animationAtlasID": null,
+                          "animationFrameRate": 30,
+                          "animationLoop": true
                         }
                       },
                       "ecaScripts": [],
@@ -4439,7 +4511,24 @@
                           "shadowOffset": {
                             "x": 1,
                             "y": 1
-                          }
+                          },
+                          "gradient": 0,
+                          "gradientTop": {
+                            "r": 255,
+                            "g": 255,
+                            "b": 255,
+                            "a": 1
+                          },
+                          "gradientBottom": {
+                            "r": 255,
+                            "g": 255,
+                            "b": 255,
+                            "a": 1
+                          },
+                          "outline": false,
+                          "outlineColor": "#000000",
+                          "outlineAlpha": 1,
+                          "outlineOffset": 1
                         }
                       },
                       "ecaScripts": [],
@@ -4536,7 +4625,24 @@
                               "shadowOffset": {
                                 "x": 1,
                                 "y": 1
-                              }
+                              },
+                              "gradient": 0,
+                              "gradientTop": {
+                                "r": 255,
+                                "g": 255,
+                                "b": 255,
+                                "a": 1
+                              },
+                              "gradientBottom": {
+                                "r": 255,
+                                "g": 255,
+                                "b": 255,
+                                "a": 1
+                              },
+                              "outline": false,
+                              "outlineColor": "#000000",
+                              "outlineAlpha": 1,
+                              "outlineOffset": 1
                             }
                           },
                           "ecaScripts": [],
@@ -4634,7 +4740,11 @@
                             "g": 255,
                             "b": 255,
                             "a": 1
-                          }
+                          },
+                          "isApplyAnimation": false,
+                          "animationAtlasID": null,
+                          "animationFrameRate": 30,
+                          "animationLoop": true
                         }
                       },
                       "ecaScripts": [],
@@ -4921,7 +5031,11 @@
                                 "g": 255,
                                 "b": 255,
                                 "a": 1
-                              }
+                              },
+                              "isApplyAnimation": false,
+                              "animationAtlasID": null,
+                              "animationFrameRate": 30,
+                              "animationLoop": true
                             }
                           },
                           "ecaScripts": [],
@@ -5018,7 +5132,11 @@
                             "g": 255,
                             "b": 255,
                             "a": 1
-                          }
+                          },
+                          "isApplyAnimation": false,
+                          "animationAtlasID": null,
+                          "animationFrameRate": 30,
+                          "animationLoop": true
                         }
                       },
                       "ecaScripts": [],
@@ -5122,7 +5240,11 @@
                             "g": 255,
                             "b": 255,
                             "a": 1
-                          }
+                          },
+                          "isApplyAnimation": false,
+                          "animationAtlasID": null,
+                          "animationFrameRate": 30,
+                          "animationLoop": true
                         }
                       },
                       "ecaScripts": [],
@@ -5212,7 +5334,24 @@
                           "shadowOffset": {
                             "x": 1,
                             "y": 1
-                          }
+                          },
+                          "gradient": 0,
+                          "gradientTop": {
+                            "r": 255,
+                            "g": 255,
+                            "b": 255,
+                            "a": 1
+                          },
+                          "gradientBottom": {
+                            "r": 255,
+                            "g": 255,
+                            "b": 255,
+                            "a": 1
+                          },
+                          "outline": false,
+                          "outlineColor": "#000000",
+                          "outlineAlpha": 1,
+                          "outlineOffset": 1
                         }
                       },
                       "ecaScripts": [],
@@ -5309,7 +5448,24 @@
                               "shadowOffset": {
                                 "x": 1,
                                 "y": 1
-                              }
+                              },
+                              "gradient": 0,
+                              "gradientTop": {
+                                "r": 255,
+                                "g": 255,
+                                "b": 255,
+                                "a": 1
+                              },
+                              "gradientBottom": {
+                                "r": 255,
+                                "g": 255,
+                                "b": 255,
+                                "a": 1
+                              },
+                              "outline": false,
+                              "outlineColor": "#000000",
+                              "outlineAlpha": 1,
+                              "outlineOffset": 1
                             }
                           },
                           "ecaScripts": [],
@@ -5407,7 +5563,11 @@
                             "g": 255,
                             "b": 255,
                             "a": 1
-                          }
+                          },
+                          "isApplyAnimation": false,
+                          "animationAtlasID": null,
+                          "animationFrameRate": 30,
+                          "animationLoop": true
                         }
                       },
                       "ecaScripts": [],
@@ -5694,7 +5854,11 @@
                                 "g": 255,
                                 "b": 255,
                                 "a": 1
-                              }
+                              },
+                              "isApplyAnimation": false,
+                              "animationAtlasID": null,
+                              "animationFrameRate": 30,
+                              "animationLoop": true
                             }
                           },
                           "ecaScripts": [],
@@ -5791,7 +5955,11 @@
                             "g": 255,
                             "b": 255,
                             "a": 1
-                          }
+                          },
+                          "isApplyAnimation": false,
+                          "animationAtlasID": null,
+                          "animationFrameRate": 30,
+                          "animationLoop": true
                         }
                       },
                       "ecaScripts": [],
@@ -5895,7 +6063,11 @@
                             "g": 255,
                             "b": 255,
                             "a": 1
-                          }
+                          },
+                          "isApplyAnimation": false,
+                          "animationAtlasID": null,
+                          "animationFrameRate": 30,
+                          "animationLoop": true
                         }
                       },
                       "ecaScripts": [],
@@ -5985,7 +6157,24 @@
                           "shadowOffset": {
                             "x": 1,
                             "y": 1
-                          }
+                          },
+                          "gradient": 0,
+                          "gradientTop": {
+                            "r": 255,
+                            "g": 255,
+                            "b": 255,
+                            "a": 1
+                          },
+                          "gradientBottom": {
+                            "r": 255,
+                            "g": 255,
+                            "b": 255,
+                            "a": 1
+                          },
+                          "outline": false,
+                          "outlineColor": "#000000",
+                          "outlineAlpha": 1,
+                          "outlineOffset": 1
                         }
                       },
                       "ecaScripts": [],
@@ -6082,7 +6271,24 @@
                               "shadowOffset": {
                                 "x": 1,
                                 "y": 1
-                              }
+                              },
+                              "gradient": 0,
+                              "gradientTop": {
+                                "r": 255,
+                                "g": 255,
+                                "b": 255,
+                                "a": 1
+                              },
+                              "gradientBottom": {
+                                "r": 255,
+                                "g": 255,
+                                "b": 255,
+                                "a": 1
+                              },
+                              "outline": false,
+                              "outlineColor": "#000000",
+                              "outlineAlpha": 1,
+                              "outlineOffset": 1
                             }
                           },
                           "ecaScripts": [],
@@ -6180,7 +6386,11 @@
                             "g": 255,
                             "b": 255,
                             "a": 1
-                          }
+                          },
+                          "isApplyAnimation": false,
+                          "animationAtlasID": null,
+                          "animationFrameRate": 30,
+                          "animationLoop": true
                         }
                       },
                       "ecaScripts": [],
@@ -6467,7 +6677,11 @@
                                 "g": 255,
                                 "b": 255,
                                 "a": 1
-                              }
+                              },
+                              "isApplyAnimation": false,
+                              "animationAtlasID": null,
+                              "animationFrameRate": 30,
+                              "animationLoop": true
                             }
                           },
                           "ecaScripts": [],
@@ -6564,7 +6778,11 @@
                             "g": 255,
                             "b": 255,
                             "a": 1
-                          }
+                          },
+                          "isApplyAnimation": false,
+                          "animationAtlasID": null,
+                          "animationFrameRate": 30,
+                          "animationLoop": true
                         }
                       },
                       "ecaScripts": [],
@@ -6668,7 +6886,11 @@
                             "g": 255,
                             "b": 255,
                             "a": 1
-                          }
+                          },
+                          "isApplyAnimation": false,
+                          "animationAtlasID": null,
+                          "animationFrameRate": 30,
+                          "animationLoop": true
                         }
                       },
                       "ecaScripts": [],
@@ -6758,7 +6980,24 @@
                           "shadowOffset": {
                             "x": 1,
                             "y": 1
-                          }
+                          },
+                          "gradient": 0,
+                          "gradientTop": {
+                            "r": 255,
+                            "g": 255,
+                            "b": 255,
+                            "a": 1
+                          },
+                          "gradientBottom": {
+                            "r": 255,
+                            "g": 255,
+                            "b": 255,
+                            "a": 1
+                          },
+                          "outline": false,
+                          "outlineColor": "#000000",
+                          "outlineAlpha": 1,
+                          "outlineOffset": 1
                         }
                       },
                       "ecaScripts": [],
@@ -6855,7 +7094,24 @@
                               "shadowOffset": {
                                 "x": 1,
                                 "y": 1
-                              }
+                              },
+                              "gradient": 0,
+                              "gradientTop": {
+                                "r": 255,
+                                "g": 255,
+                                "b": 255,
+                                "a": 1
+                              },
+                              "gradientBottom": {
+                                "r": 255,
+                                "g": 255,
+                                "b": 255,
+                                "a": 1
+                              },
+                              "outline": false,
+                              "outlineColor": "#000000",
+                              "outlineAlpha": 1,
+                              "outlineOffset": 1
                             }
                           },
                           "ecaScripts": [],
@@ -6953,7 +7209,11 @@
                             "g": 255,
                             "b": 255,
                             "a": 1
-                          }
+                          },
+                          "isApplyAnimation": false,
+                          "animationAtlasID": null,
+                          "animationFrameRate": 30,
+                          "animationLoop": true
                         }
                       },
                       "ecaScripts": [],
@@ -7204,7 +7464,8 @@
                     "right": 0
                   },
                   "tableSpace": 0,
-                  "sortType": 0
+                  "sortType": 0,
+                  "ignoreInactive": false
                 }
               },
               "ecaScripts": [],
@@ -7592,7 +7853,11 @@
                 "g": 170,
                 "b": 170,
                 "a": 1
-              }
+              },
+              "isApplyAnimation": false,
+              "animationAtlasID": null,
+              "animationFrameRate": 30,
+              "animationLoop": true
             }
           },
           "ecaScripts": [],
@@ -7681,7 +7946,24 @@
               "shadowOffset": {
                 "x": 1,
                 "y": 1
-              }
+              },
+              "gradient": 0,
+              "gradientTop": {
+                "r": 255,
+                "g": 255,
+                "b": 255,
+                "a": 1
+              },
+              "gradientBottom": {
+                "r": 255,
+                "g": 255,
+                "b": 255,
+                "a": 1
+              },
+              "outline": false,
+              "outlineColor": "#000000",
+              "outlineAlpha": 1,
+              "outlineOffset": 1
             }
           },
           "ecaScripts": [],
@@ -7811,4 +8093,4 @@
   "discriminator": "ISceneLike",
   "version": 3
 }
-//"{FE:{"v":"1.17.4335043","c":{"FF":5001},"s":100}
+//"{FE:{"v":"1.18.4494106","c":{"FF":5001},"s":100}

@@ -1,0 +1,47 @@
+import "StdLibrary.fcc" as StdLib
+import "EditorGenLib.fcc" as EditorLib
+
+static graph MailsDefinitions {
+    DATABASE_TYPE = "Mails"
+
+    SHEET_MAILS = "PlayerSave"
+    SHEET_GIFT_HAS_USE = "GiftCodeHasUse"
+    KEY_CURRENT_MAILS = "CurrentMails"
+    KEY_PENDING_MAILS = "PendingMails"
+    KEY_GIFT_HAS_USE = "OwnGiftCodeHasUse"
+    MAP_CODE = ""
+
+    DATA_MAIL_IS_CONFIG = "Mail_IsConfig"
+    DATA_MAIL_ID = "Mail_Id"
+    DATA_MAIL_CREATED_AT = "Mail_CreatedAt"
+    DATA_MAIL_REWARD_TYPES = "Mail_RewardTypes"
+    DATA_MAIL_REWARD_VALUES = "Mail_RewardValues"
+    DATA_MAIL_REWARD_AMOUNTS = "Mail_RewardAmounts"
+
+    CSV_MAIL_DETAILS_ID int = 0
+    CSV_MAIL_DETAILS_TITLE int = 1
+    CSV_MAIL_DETAILS_CONTENT int = 2
+    CSV_GIFTS_ID int = 0
+    CSV_GIFTS_CODE int = 1
+    CSV_GIFTS_DETAILS int = 2
+    CSV_GIFTS_START int = 3
+    CSV_GIFTS_END int = 4
+    CSV_GIFTS_REWARDS int = 5
+    CSV_GIFTS_REUSE int = 6
+
+    MAX_VALID_DAYS int = 7
+    MAX_MAILS int = 30
+    SECONDS_PER_DAY int = 86400
+
+    HUD_MAIL_TAB_NOTICE string = "HudMailTab_Notice"
+    HUD_MAIL_TAB_SYSTEM string = "HudMailTab_System"
+
+    PAYLOAD_PLAYER_UID = "PlayerUID"
+    PAYLOAD_PLAYER = "Player"
+    PAYLOAD_IS_CONFIG_MAIL = "IsConfigMail"
+    PAYLOAD_MAIL_ID = "MailId"
+    PAYLOAD_MAIL_INDEX = "MailIndex"
+    PAYLOAD_REWARD_TYPES = "RewardTypes"
+    PAYLOAD_REWARD_VALUES = "RewardValues"
+    PAYLOAD_REWARD_AMOUNTS = "RewardAmounts"
+}
