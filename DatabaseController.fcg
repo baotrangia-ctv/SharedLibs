@@ -87,6 +87,14 @@ static graph DatabaseController {
     }
 
     func IsDatabaseReady(playerUID UUID, dbType string) bool {
+        if !Map.ContainKey(_DBReadyStatus, playerUID) {
+            return false
+        }
+
+        if !Map.ContainKey(_DBReadyStatus[playerUID], dbType) {
+            return false
+        }
+
         if Map.ContainKey(_RegisteredDBs, dbType) {
             return _DBReadyStatus[playerUID][dbType]
         }
@@ -145,6 +153,14 @@ static graph DatabaseController {
     }
 
     func IsDatabaseSaved(playerUID UUID, dbType string) bool {
+        if !Map.ContainKey(_DBSavedStatus, playerUID) {
+            return false
+        }
+
+        if !Map.ContainKey(_DBSavedStatus[playerUID], dbType) {
+            return false
+        }
+
         if Map.ContainKey(_RegisteredDBs, dbType) {
             return _DBSavedStatus[playerUID][dbType]
         }
