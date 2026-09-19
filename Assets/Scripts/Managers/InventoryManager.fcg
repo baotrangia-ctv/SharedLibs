@@ -1,0 +1,931 @@
+import "Map.fcc" as Map
+import "List.fcc" as List
+import "Database.fcc" as Database
+import "Convert.fcc" as Convert
+import "StdLibrary.fcc" as StdLib
+import "EditorGenLib.fcc" as EditorLib
+
+import "../Configs/InventoryDefinitions.fcg" as InventoryDefinitions
+import "../CoreLib/DatabaseController.fcg" as DatabaseController
+import "../Utils/DataUtils.fcg" as DataUtils
+import "../Utils/BigNumberHandler.fcg" as BigNumberHandler
+
+// Shared Inventory is the core pet Storage logic inherited from
+// StealAPet/Assets/Scripts/Manager/StorageManager.fcg.
+// It must not be confused with StealAPet's InventoryManager, which is a
+// separate consumable/event-pet system.
+static graph InventoryManager {
+    DEFAULT_PET_ID int = -1
+    DEFAULT_MUTATION_ID int = 1
+    DEFAULT_LEVEL int = 1
+    DEFAULT_PET_INDEX string = ""
+    DEFAULT_PET_PASSIVE List<Map<int, float>> = List<Map<int, float>>{}
+    CAPACITY_MODE_BASE_BONUS string = "BaseBonus"
+    CAPACITY_MODE_DIRECT string = "Direct"
+
+    _PlayerInventoryPets Map<UUID, List<Map<string, object>>>
+    _PlayerInventoryBalance Map<UUID, List<int>>
+    _PlayerInventoryMaxSlot Map<UUID, int>
+    _PlayerTotalIncomePerSecond Map<UUID, List<int>>
+    _IsUpdatingInventoryBalance Map<UUID, bool>
+    _PlayerInventoryDataLoaded Map<UUID, bool>
+    _PlayerInventoryCapacityReady Map<UUID, bool>
+    _PlayerInventoryReady Map<UUID, bool>
+    _PlayerUsedCapacityInputs Map<UUID, bool>
+    _PlayerUsedDirectMaxSlot Map<UUID, bool>
+    _PlayerCapacityConflictLogged Map<UUID, bool>
+    _PlayerCapacityMode Map<UUID, string>
+
+    // Consumer-provided inputs replacing source Managers that are not part of
+    // SharedLibs: rebirth/passive capacity, wallet multiplier, and last-log time.
+    _PlayerBaseMaxSlot Map<UUID, int>
+    _PlayerInventoryBonusSlot Map<UUID, int>
+    _PlayerMultiplyRate Map<UUID, float>
+    _PlayerDeltaLastLogTime Map<UUID, int>
+
+    // Shared-local index ownership protects duplicate entries inside this
+    // module. A consumer must still validate collisions against its own pet store.
+    _PlayerInventoryPetIndexes Map<UUID, Map<string, bool>>
+
+    _CurrentTimestamp int
+
+    // ==========================
+    // Initialization
+    // ==========================
+
+    event OnAwake() {
+        InitInventoryManager()
+        DatabaseController.RegisterDatabase(InventoryDefinitions.DATABASE_TYPE)
+    }
+
+    func InitInventoryManager() {
+        if _PlayerInventoryPets != nil {
+            return
+        }
+
+        _PlayerInventoryPets = Map<UUID, List<Map<string, object>>>{}
+        _PlayerInventoryBalance = Map<UUID, List<int>>{}
+        _PlayerInventoryMaxSlot = Map<UUID, int>{}
+        _PlayerTotalIncomePerSecond = Map<UUID, List<int>>{}
+        _IsUpdatingInventoryBalance = Map<UUID, bool>{}
+        _PlayerInventoryDataLoaded = Map<UUID, bool>{}
+        _PlayerInventoryCapacityReady = Map<UUID, bool>{}
+        _PlayerInventoryReady = Map<UUID, bool>{}
+        _PlayerUsedCapacityInputs = Map<UUID, bool>{}
+        _PlayerUsedDirectMaxSlot = Map<UUID, bool>{}
+        _PlayerCapacityConflictLogged = Map<UUID, bool>{}
+        _PlayerCapacityMode = Map<UUID, string>{}
+        _PlayerBaseMaxSlot = Map<UUID, int>{}
+        _PlayerInventoryBonusSlot = Map<UUID, int>{}
+        _PlayerMultiplyRate = Map<UUID, float>{}
+        _PlayerDeltaLastLogTime = Map<UUID, int>{}
+        _PlayerInventoryPetIndexes = Map<UUID, Map<string, bool>>{}
+        _CurrentTimestamp = 0
+    }
+
+    func InitPlayerInventory(playerUID UUID) {
+        InitInventoryManager()
+
+        if Map.ContainKey(_PlayerInventoryPets, playerUID) && _PlayerInventoryPets[playerUID] != nil {
+            return
+        }
+
+        _PlayerInventoryPets[playerUID] = List<Map<string, object>>{}
+        _PlayerInventoryBalance[playerUID] = List<int>{0}
+        _PlayerInventoryMaxSlot[playerUID] = 0
+        _PlayerTotalIncomePerSecond[playerUID] = List<int>{0}
+        _IsUpdatingInventoryBalance[playerUID] = false
+        _PlayerInventoryDataLoaded[playerUID] = false
+        _PlayerInventoryCapacityReady[playerUID] = false
+        _PlayerInventoryReady[playerUID] = false
+        _PlayerUsedCapacityInputs[playerUID] = false
+        _PlayerUsedDirectMaxSlot[playerUID] = false
+        _PlayerCapacityConflictLogged[playerUID] = false
+        _PlayerCapacityMode[playerUID] = ""
+        _PlayerBaseMaxSlot[playerUID] = 0
+        _PlayerInventoryBonusSlot[playerUID] = 0
+        _PlayerMultiplyRate[playerUID] = 1.0
+        _PlayerDeltaLastLogTime[playerUID] = 0
+        _PlayerInventoryPetIndexes[playerUID] = Map<string, bool>{}
+    }
+
+    // ==========================
+    // Load Data
+    // ==========================
+
+    event OnDatabaseLoad(playerUID UUID, databaseType string) {
+        if databaseType == InventoryDefinitions.DATABASE_TYPE {
+            wait LoadInventoryDatabase(playerUID)
+        }
+    }
+
+    async func LoadInventoryDatabase(playerUID UUID) {
+        InitPlayerInventory(playerUID)
+
+        wait ReadFromDataStoreBatch(
+            InventoryDefinitions.SHEET_STORAGE,
+            List<UUID>{playerUID, playerUID},
+            List<string>{
+                InventoryDefinitions.KEY_STORAGE_PETS,
+                InventoryDefinitions.KEY_STORAGE_BALANCE,
+            },
+            out var results,
+            InventoryDefinitions.MAP_CODE,
+            out var statusCodes,
+        )
+
+        wait LoadPlayerInventoryValue(
+            playerUID,
+            InventoryDefinitions.KEY_STORAGE_PETS,
+            results[0],
+            statusCodes[0] != StatusCode.NoError,
+            out var inventoryPets,
+            out var isSuccessPets,
+        )
+        wait LoadPlayerInventoryValue(
+            playerUID,
+            InventoryDefinitions.KEY_STORAGE_BALANCE,
+            results[1],
+            statusCodes[1] != StatusCode.NoError,
+            out var inventoryBalance,
+            out var isSuccessBalance,
+        )
+
+        if !isSuccessPets || !isSuccessBalance {
+            OnlineLog("[InventoryManager] LoadInventoryDatabase failed: " + playerUID + " " + isSuccessPets + " " + isSuccessBalance)
+            return
+        }
+
+        wait ExtractInventoryData(playerUID, inventoryPets)
+        SetPlayerInventoryBalance(playerUID, BigNumberHandler.ConvertStringToListNum(inventoryBalance as string))
+
+        _PlayerInventoryDataLoaded[playerUID] = true
+        RefreshInventoryCapacity(playerUID)
+        RecalculateTotalIncomePerSecond(playerUID)
+        TryFinalizeInventoryReady(playerUID)
+        LogInfo("[InventoryManager] LoadInventoryDatabase success(" + playerUID + ")")
+    }
+
+    async func LoadPlayerInventoryValue(
+        playerUID UUID,
+        keyInventory string,
+        rawInventory object,
+        needRetry bool,
+        out var inventoryData object,
+        out var isSuccess bool) {
+        isSuccess = false
+
+        if needRetry {
+            wait DatabaseController.RetryLoadData(
+                InventoryDefinitions.SHEET_STORAGE,
+                playerUID,
+                keyInventory,
+                out var readInventory,
+                InventoryDefinitions.MAP_CODE,
+                out var statusCode,
+            )
+
+            rawInventory = readInventory
+            if statusCode != StatusCode.NoError {
+                return
+            }
+        }
+
+        inventoryData = rawInventory
+        isSuccess = true
+    }
+
+    async func ExtractInventoryData(playerUID UUID, rawData object) {
+        InitPlayerInventory(playerUID)
+        SetPlayerInventoryPets(playerUID, List<Map<string, object>>{})
+
+        var jsonData List<Map<string, string>> = DataUtils.JsonStringToListKeyValueV2(rawData as string)
+        for _, data in jsonData {
+            StringToInt(data[InventoryDefinitions.DATA_PET_ID], out var petId, out var isSuccessPetId)
+            StringToInt(data[InventoryDefinitions.DATA_PET_MUTATION_ID], out var mutationId, out var isSuccessMutation)
+            var weatherIds List<int> = DataUtils.StringToListIntV2(data[InventoryDefinitions.DATA_PET_WEATHER_IDS], ",")
+            StringToInt(data[InventoryDefinitions.DATA_PET_LEVEL], out var level, out var isSuccessLevel)
+            var petIndex string = data[InventoryDefinitions.DATA_PET_INDEX]
+            StringToInt(data[InventoryDefinitions.DATA_PET_STORE_TIME], out var storeTime, out var isSuccessStoreTime)
+
+            if !isSuccessPetId || !IsValidInventoryPetId(petId) {
+                continue
+            }
+
+            AppendPlayerInventoryPet(playerUID, Map<string, object>{
+                InventoryDefinitions.PET_ID: petId,
+                InventoryDefinitions.PET_MUTATION_ID: mutationId,
+                InventoryDefinitions.PET_WEATHER_IDS: weatherIds,
+                InventoryDefinitions.PET_LEVEL: level,
+                InventoryDefinitions.PET_INDEX: petIndex,
+                InventoryDefinitions.PET_STORE_TIME: storeTime,
+            })
+        }
+    }
+
+    // Consumer supplies base capacity and passive capacity before or after load.
+    // This callback is the generic replacement for source-module capacity waits.
+    func SetInventoryCapacityInputs(playerUID UUID, baseSlots int, bonusSlots int) {
+        InitPlayerInventory(playerUID)
+        WarnIfCapacityApisAreMixed(playerUID, "SetInventoryCapacityInputs")
+        _PlayerUsedCapacityInputs[playerUID] = true
+        _PlayerCapacityMode[playerUID] = CAPACITY_MODE_BASE_BONUS
+        _PlayerBaseMaxSlot[playerUID] = baseSlots
+        _PlayerInventoryBonusSlot[playerUID] = bonusSlots
+        _PlayerInventoryCapacityReady[playerUID] = true
+        RefreshInventoryCapacity(playerUID)
+        RecalculateTotalIncomePerSecond(playerUID)
+        TryFinalizeInventoryReady(playerUID)
+    }
+
+    // Independent capacity API for consumers that have one authoritative slot
+    // number and no base/bonus capacity split. It finalizes capacity readiness
+    // through the same flow as SetInventoryCapacityInputs. Do not call
+    // RefreshInventoryCapacity here: that API intentionally recalculates from
+    // baseSlots + bonusSlots and would overwrite the direct value.
+    func SetPlayerInventoryMaxSlot(playerUID UUID, maxSlot int) {
+        InitPlayerInventory(playerUID)
+        WarnIfCapacityApisAreMixed(playerUID, "SetPlayerInventoryMaxSlot")
+        _PlayerUsedDirectMaxSlot[playerUID] = true
+        _PlayerCapacityMode[playerUID] = CAPACITY_MODE_DIRECT
+        _PlayerInventoryMaxSlot[playerUID] = maxSlot
+        _PlayerInventoryCapacityReady[playerUID] = true
+
+        if _PlayerInventoryDataLoaded[playerUID] {
+            RecalculateTotalIncomePerSecond(playerUID)
+            if !IsPlayerUpdatingInventoryBalance(playerUID) {
+                start UpdatePlayerInventoryBalanceLoop(playerUID)
+            }
+        }
+
+        TryFinalizeInventoryReady(playerUID)
+    }
+
+    func WarnIfCapacityApisAreMixed(playerUID UUID, apiName string) {
+        InitPlayerInventory(playerUID)
+
+        var bothApisUsed bool = (_PlayerUsedCapacityInputs[playerUID] && apiName == "SetPlayerInventoryMaxSlot") || (_PlayerUsedDirectMaxSlot[playerUID] && apiName == "SetInventoryCapacityInputs")
+        if bothApisUsed && !_PlayerCapacityConflictLogged[playerUID] {
+            _PlayerCapacityConflictLogged[playerUID] = true
+            OnlineLog("[InventoryManager] Warning: " + apiName + " and the other capacity API were both used for player " + playerUID + "; the latest capacity call determines MaxSlot")
+        }
+    }
+
+    func RefreshInventoryCapacity(playerUID UUID) {
+        InitPlayerInventory(playerUID)
+
+        // Never use petsCount as a provisional capacity. Until the consumer
+        // supplies the real inputs, MaxSlot remains non-authoritative and the
+        // inventory cannot be finalized as ready.
+        if !_PlayerInventoryCapacityReady[playerUID] {
+            return
+        }
+
+        if _PlayerCapacityMode[playerUID] != CAPACITY_MODE_DIRECT {
+            var totalInventoryMax int = _PlayerBaseMaxSlot[playerUID] + _PlayerInventoryBonusSlot[playerUID]
+            var inventoryPetsCount int = List.Length(GetPlayerInventoryPets(playerUID))
+            if totalInventoryMax < inventoryPetsCount {
+                totalInventoryMax = inventoryPetsCount
+            }
+
+            _PlayerInventoryMaxSlot[playerUID] = totalInventoryMax
+        }
+
+        if _PlayerInventoryDataLoaded[playerUID] && !IsPlayerUpdatingInventoryBalance(playerUID) {
+            start UpdatePlayerInventoryBalanceLoop(playerUID)
+        }
+    }
+
+    func TryFinalizeInventoryReady(playerUID UUID) {
+        InitPlayerInventory(playerUID)
+
+        if _PlayerInventoryReady[playerUID] || !_PlayerInventoryDataLoaded[playerUID] || !_PlayerInventoryCapacityReady[playerUID] {
+            return
+        }
+
+        _PlayerInventoryReady[playerUID] = true
+        DatabaseController.SetDatabaseReady(playerUID, InventoryDefinitions.DATABASE_TYPE, true)
+    }
+
+    // ==========================
+    // Save Data
+    // ==========================
+
+    event OnDatabaseSave(playerUID UUID, databaseType string) {
+        if databaseType == InventoryDefinitions.DATABASE_TYPE {
+            wait SaveInventoryDatabase(playerUID)
+        }
+    }
+
+    async func SaveInventoryDatabase(playerUID UUID) {
+        wait SavePlayerInventory(playerUID, InventoryDefinitions.KEY_STORAGE_PETS, _PlayerInventoryPets[playerUID])
+        wait SavePlayerInventory(playerUID, InventoryDefinitions.KEY_STORAGE_BALANCE, _PlayerInventoryBalance[playerUID])
+
+        DatabaseController.SetDatabaseSaved(playerUID, InventoryDefinitions.DATABASE_TYPE, true)
+
+        wait WaitForMillisecond(3000)
+        ClearData(playerUID)
+    }
+
+    async func SavePlayerInventory(playerUID UUID, inventoryKey string, inventoryValue object) {
+        var convertedInventory string = ""
+        if inventoryKey == InventoryDefinitions.KEY_STORAGE_PETS {
+            convertedInventory = GetPlayerInventoryDataJson(playerUID)
+        } else if inventoryKey == InventoryDefinitions.KEY_STORAGE_BALANCE {
+            convertedInventory = BigNumberHandler.ConvertListNumToString(_PlayerInventoryBalance[playerUID])
+        }
+
+        wait WriteToDataStoreV2(
+            InventoryDefinitions.SHEET_STORAGE,
+            playerUID,
+            inventoryKey,
+            convertedInventory,
+            InventoryDefinitions.MAP_CODE,
+            out var statusCode,
+        )
+
+        if statusCode != StatusCode.NoError {
+            OnlineLog("[InventoryManager] SaveInventory(" + inventoryKey + ") [" + playerUID + "] failed: " + inventoryValue + " - " + statusCode)
+        }
+    }
+
+    func ClearData(playerUID UUID) {
+        Map.Remove(_PlayerInventoryPets, playerUID)
+        Map.Remove(_PlayerInventoryBalance, playerUID)
+        Map.Remove(_PlayerInventoryMaxSlot, playerUID)
+        Map.Remove(_PlayerTotalIncomePerSecond, playerUID)
+        Map.Remove(_IsUpdatingInventoryBalance, playerUID)
+        Map.Remove(_PlayerInventoryDataLoaded, playerUID)
+        Map.Remove(_PlayerInventoryCapacityReady, playerUID)
+        Map.Remove(_PlayerInventoryReady, playerUID)
+        Map.Remove(_PlayerUsedCapacityInputs, playerUID)
+        Map.Remove(_PlayerUsedDirectMaxSlot, playerUID)
+        Map.Remove(_PlayerCapacityConflictLogged, playerUID)
+        Map.Remove(_PlayerCapacityMode, playerUID)
+        Map.Remove(_PlayerBaseMaxSlot, playerUID)
+        Map.Remove(_PlayerInventoryBonusSlot, playerUID)
+        Map.Remove(_PlayerMultiplyRate, playerUID)
+        Map.Remove(_PlayerDeltaLastLogTime, playerUID)
+        Map.Remove(_PlayerInventoryPetIndexes, playerUID)
+    }
+
+    // ==========================
+    // Query APIs
+    // ==========================
+
+    func GetPlayerInventoryPets(playerUID UUID) List<Map<string, object>> {
+        InitPlayerInventory(playerUID)
+
+        var result List<Map<string, object>> = List<Map<string, object>>{}
+        for _, pet in _PlayerInventoryPets[playerUID] {
+            List.Append(result, CloneInventoryPet(pet))
+        }
+        return result
+    }
+
+    func SetPlayerInventoryPets(playerUID UUID, pets List<Map<string, object>>) {
+        InitPlayerInventory(playerUID)
+        _PlayerInventoryPets[playerUID] = List<Map<string, object>>{}
+        _PlayerInventoryPetIndexes[playerUID] = Map<string, bool>{}
+
+        for _, pet in pets {
+            AppendPlayerInventoryPet(playerUID, pet)
+        }
+    }
+
+    func GetPlayerInventoryPetAtSlot(playerUID UUID, slot int) Map<string, object> {
+        InitPlayerInventory(playerUID)
+
+        if slot < 0 || List.Length(_PlayerInventoryPets[playerUID]) <= slot {
+            return nil
+        }
+
+        var pet Map<string, object> = _PlayerInventoryPets[playerUID][slot]
+        if pet == nil {
+            return nil
+        }
+
+        if !Map.ContainKey(pet, InventoryDefinitions.PET_PASSIVE) {
+            pet[InventoryDefinitions.PET_PASSIVE] = List<Map<int, float>>{}
+        }
+
+        return CloneInventoryPet(pet)
+    }
+
+    func GetPlayerInventoryPetValueBySlot(playerUID UUID, slot int, petValue string) object {
+        if !Map.ContainKey(_PlayerInventoryPets, playerUID) || _PlayerInventoryPets[playerUID] == nil {
+            return nil
+        }
+
+        if slot < 0 || List.Length(_PlayerInventoryPets[playerUID]) <= slot {
+            return nil
+        }
+
+        return _PlayerInventoryPets[playerUID][slot][petValue]
+    }
+
+    func SetPlayerInventoryPetValueAtSlot(playerUID UUID, slot int, petValue string, value object) {
+        InitPlayerInventory(playerUID)
+
+        if slot < 0 {
+            return
+        }
+
+        while List.Length(_PlayerInventoryPets[playerUID]) <= slot {
+            List.Append(_PlayerInventoryPets[playerUID], Map<string, object>{})
+        }
+
+        if _PlayerInventoryPets[playerUID][slot] == nil {
+            _PlayerInventoryPets[playerUID][slot] = Map<string, object>{}
+        }
+
+        _PlayerInventoryPets[playerUID][slot][petValue] = value
+    }
+
+    func HasPetInInventoryAt(playerUID UUID, slot int) bool {
+        if !IsValidInventorySlot(playerUID, slot) {
+            return false
+        }
+
+        return IsValidInventoryPetId(GetPlayerInventoryPetValueBySlot(playerUID, slot, InventoryDefinitions.PET_ID) as int)
+    }
+
+    func CanRetrieveInventoryPet(playerUID UUID, slot int) bool {
+        var storeTime int = GetPlayerInventoryPetValueBySlot(playerUID, slot, InventoryDefinitions.PET_STORE_TIME) as int
+        return GetCurrentTimestamp() - storeTime >= InventoryDefinitions.LOCK_DURATION
+    }
+
+    func SetDefaultInventoryPet(playerUID UUID, slot int) {
+        SetPlayerInventoryPetValueAtSlot(playerUID, slot, InventoryDefinitions.PET_ID, DEFAULT_PET_ID)
+        SetPlayerInventoryPetValueAtSlot(playerUID, slot, InventoryDefinitions.PET_MUTATION_ID, DEFAULT_MUTATION_ID)
+        SetPlayerInventoryPetValueAtSlot(playerUID, slot, InventoryDefinitions.PET_WEATHER_IDS, List<int>{})
+        SetPlayerInventoryPetValueAtSlot(playerUID, slot, InventoryDefinitions.PET_LEVEL, DEFAULT_LEVEL)
+        SetPlayerInventoryPetValueAtSlot(playerUID, slot, InventoryDefinitions.PET_INDEX, DEFAULT_PET_INDEX)
+        SetPlayerInventoryPetValueAtSlot(playerUID, slot, InventoryDefinitions.PET_PASSIVE, DEFAULT_PET_PASSIVE)
+    }
+
+    func IsValidInventorySlot(playerUID UUID, slot int) bool {
+        return slot >= 0 && slot < GetPlayerInventoryMaxSlot(playerUID)
+    }
+
+    func IsInventoryDataLoaded(playerUID UUID) bool {
+        InitPlayerInventory(playerUID)
+        return _PlayerInventoryDataLoaded[playerUID]
+    }
+
+    func IsInventoryCapacityReady(playerUID UUID) bool {
+        InitPlayerInventory(playerUID)
+        return _PlayerInventoryCapacityReady[playerUID]
+    }
+
+    func IsInventoryReady(playerUID UUID) bool {
+        InitPlayerInventory(playerUID)
+        return _PlayerInventoryReady[playerUID]
+    }
+
+    func GetPlayerInventoryMaxSlot(playerUID UUID) int {
+        InitPlayerInventory(playerUID)
+        return _PlayerInventoryMaxSlot[playerUID]
+    }
+
+    func IsInventoryFull(playerUID UUID) bool {
+        InitPlayerInventory(playerUID)
+        if !IsInventoryDataLoaded(playerUID) || !IsInventoryCapacityReady(playerUID) {
+            return false
+        }
+        return List.Length(_PlayerInventoryPets[playerUID]) >= GetPlayerInventoryMaxSlot(playerUID)
+    }
+
+    func GetTotalIncomePerSecond(playerUID UUID) List<int> {
+        InitPlayerInventory(playerUID)
+        return List.Clone(_PlayerTotalIncomePerSecond[playerUID]) as List<int>
+    }
+
+    func GetPlayerInventoryBalance(playerUID UUID) List<int> {
+        InitPlayerInventory(playerUID)
+        return List.Clone(_PlayerInventoryBalance[playerUID]) as List<int>
+    }
+
+    func SetPlayerInventoryBalance(playerUID UUID, balance List<int>) {
+        InitPlayerInventory(playerUID)
+        _PlayerInventoryBalance[playerUID] = List.Clone(balance) as List<int>
+    }
+
+    func IsPlayerUpdatingInventoryBalance(playerUID UUID) bool {
+        InitPlayerInventory(playerUID)
+        return _IsUpdatingInventoryBalance[playerUID]
+    }
+
+    func SetPlayerUpdatingInventoryBalance(playerUID UUID, status bool) {
+        InitPlayerInventory(playerUID)
+        _IsUpdatingInventoryBalance[playerUID] = status
+    }
+
+    // ==========================
+    // Actions
+    // ==========================
+
+    // The consumer passes a pet snapshot and receives the source-compatible
+    // status. Removing the pet from the consumer's base happens after success.
+    func RequestStorePet(payload Map<string, object>, out var statusCode string) {
+        CheckConditionStorePet(payload, out var checkStatusCode)
+        statusCode = checkStatusCode
+
+        if statusCode != InventoryDefinitions.STATUS_NO_ERROR {
+            return
+        }
+
+        if !ProcessStorePet(payload) {
+            statusCode = InventoryDefinitions.STATUS_PET_INDEX_CONFLICT
+        }
+    }
+
+    func CheckConditionStorePet(payload Map<string, object>, out var statusCode string) {
+        statusCode = InventoryDefinitions.STATUS_NO_ERROR
+
+        if payload == nil || !Map.ContainKey(payload, InventoryDefinitions.PAYLOAD_PLAYER_UID) {
+            statusCode = InventoryDefinitions.STATUS_INVALID_VALUE
+            return
+        }
+
+        var playerUID UUID = payload[InventoryDefinitions.PAYLOAD_PLAYER_UID] as UUID
+        if !HasPayloadFlag(payload, InventoryDefinitions.PAYLOAD_PLAYER_AVAILABLE) {
+            statusCode = InventoryDefinitions.STATUS_PLAYER_NOT_AVAILABLE
+            return
+        }
+
+        if !IsInventoryDataLoaded(playerUID) {
+            statusCode = InventoryDefinitions.STATUS_INVENTORY_NOT_READY
+            return
+        }
+
+        if !IsInventoryCapacityReady(playerUID) {
+            statusCode = InventoryDefinitions.STATUS_INVENTORY_CAPACITY_NOT_READY
+            return
+        }
+
+        if IsInventoryFull(playerUID) {
+            statusCode = InventoryDefinitions.STATUS_PLAYER_FULL_INVENTORY
+            return
+        }
+
+        if !Map.ContainKey(payload, InventoryDefinitions.PAYLOAD_PET) || payload[InventoryDefinitions.PAYLOAD_PET] == nil {
+            statusCode = InventoryDefinitions.STATUS_INVALID_VALUE
+            return
+        }
+
+        var pet Map<string, object> = payload[InventoryDefinitions.PAYLOAD_PET] as Map<string, object>
+        if !IsValidInventoryPetValue(pet) {
+            statusCode = InventoryDefinitions.STATUS_INVALID_VALUE
+            return
+        }
+
+        if !HasPayloadFlag(payload, InventoryDefinitions.PAYLOAD_PET_INTERACTABLE) {
+            statusCode = InventoryDefinitions.STATUS_PET_NOT_INTERACTIVE
+            return
+        }
+
+        if !HasPayloadFlag(payload, InventoryDefinitions.PAYLOAD_FEATURE_ENABLED) {
+            statusCode = InventoryDefinitions.STATUS_FEATURE_LOCK
+            return
+        }
+    }
+
+    func ProcessStorePet(payload Map<string, object>) bool {
+        var playerUID UUID = payload[InventoryDefinitions.PAYLOAD_PLAYER_UID] as UUID
+        var petValue Map<string, object> = NormalizeInventoryPet(payload[InventoryDefinitions.PAYLOAD_PET] as Map<string, object>)
+        petValue[InventoryDefinitions.PET_STORE_TIME] = GetPayloadTimestamp(payload)
+
+        if !AppendPlayerInventoryPet(playerUID, petValue) {
+            return false
+        }
+
+        RecalculateTotalIncomePerSecond(playerUID)
+        return true
+    }
+
+    // The consumer adds the returned pet to its base only after this succeeds.
+    func RequestRetrievePetBySlot(
+        payload Map<string, object>,
+        out var petData Map<string, object>,
+        out var statusCode string) {
+        CheckConditionRetrievePetBySlot(payload, out var checkStatusCode)
+        statusCode = checkStatusCode
+
+        if statusCode != InventoryDefinitions.STATUS_NO_ERROR {
+            petData = Map<string, object>{}
+            return
+        }
+
+        ProcessRetrievePetBySlot(payload, out var resultPetData)
+        petData = resultPetData
+    }
+
+    func CheckConditionRetrievePetBySlot(payload Map<string, object>, out var statusCode string) {
+        statusCode = InventoryDefinitions.STATUS_NO_ERROR
+
+        if payload == nil || !Map.ContainKey(payload, InventoryDefinitions.PAYLOAD_PLAYER_UID) || !Map.ContainKey(payload, InventoryDefinitions.PAYLOAD_PET_SLOT) {
+            statusCode = InventoryDefinitions.STATUS_INVALID_VALUE
+            return
+        }
+
+        var playerUID UUID = payload[InventoryDefinitions.PAYLOAD_PLAYER_UID] as UUID
+        var slot int = payload[InventoryDefinitions.PAYLOAD_PET_SLOT] as int
+
+        if !HasPayloadFlag(payload, InventoryDefinitions.PAYLOAD_PLAYER_AVAILABLE) {
+            statusCode = InventoryDefinitions.STATUS_PLAYER_NOT_AVAILABLE
+            return
+        }
+
+        if !IsInventoryDataLoaded(playerUID) {
+            statusCode = InventoryDefinitions.STATUS_INVENTORY_NOT_READY
+            return
+        }
+
+        if !IsInventoryCapacityReady(playerUID) {
+            statusCode = InventoryDefinitions.STATUS_INVENTORY_CAPACITY_NOT_READY
+            return
+        }
+
+        if !IsValidInventorySlot(playerUID, slot) {
+            statusCode = InventoryDefinitions.STATUS_INVALID_VALUE
+            return
+        }
+
+        if !HasPetInInventoryAt(playerUID, slot) {
+            statusCode = InventoryDefinitions.STATUS_PET_NOT_FOUND
+            return
+        }
+
+        if !HasPayloadFlag(payload, InventoryDefinitions.PAYLOAD_BASE_SLOT_AVAILABLE) {
+            statusCode = InventoryDefinitions.STATUS_PLAYER_FULL_BASE
+            return
+        }
+
+        if !CanRetrieveInventoryPet(playerUID, slot) {
+            statusCode = InventoryDefinitions.STATUS_PET_LOCKED
+            return
+        }
+
+        if !HasPayloadFlag(payload, InventoryDefinitions.PAYLOAD_FEATURE_ENABLED) {
+            statusCode = InventoryDefinitions.STATUS_FEATURE_LOCK
+            return
+        }
+    }
+
+    func ProcessRetrievePetBySlot(payload Map<string, object>, out var petValue Map<string, object>) {
+        var playerUID UUID = payload[InventoryDefinitions.PAYLOAD_PLAYER_UID] as UUID
+        var slot int = payload[InventoryDefinitions.PAYLOAD_PET_SLOT] as int
+
+        petValue = GetPlayerInventoryPetAtSlot(playerUID, slot)
+        RemovePlayerInventoryPet(playerUID, slot)
+        RecalculateTotalIncomePerSecond(playerUID)
+    }
+
+    // Claims the balance and returns the amount for the consumer wallet.
+    // Wallet/UI/SFX side effects stay outside SharedLibs.
+    func HandleClaimBalance(playerUID UUID, out var earnBalance List<int>) bool {
+        earnBalance = GetPlayerInventoryBalance(playerUID)
+        if earnBalance == nil || List.Length(earnBalance) == 0 {
+            return false
+        }
+
+        SetPlayerInventoryBalance(playerUID, List<int>{0})
+        return true
+    }
+
+    // ==========================
+    // Optional Integrations
+    // ==========================
+
+    func SetPlayerInventoryPetIncome(playerUID UUID, slot int, income List<int>) {
+        if !HasPetInInventoryAt(playerUID, slot) {
+            return
+        }
+
+        SetPlayerInventoryPetValueAtSlot(
+            playerUID,
+            slot,
+            InventoryDefinitions.PET_INCOME,
+            List.Clone(income) as List<int>,
+        )
+        RecalculateTotalIncomePerSecond(playerUID)
+    }
+
+    func SetPlayerMultiplyRate(playerUID UUID, multiplyRate float) {
+        InitPlayerInventory(playerUID)
+        _PlayerMultiplyRate[playerUID] = multiplyRate
+    }
+
+    func SetPlayerDeltaLastLogTime(playerUID UUID, deltaTime int) {
+        InitPlayerInventory(playerUID)
+        _PlayerDeltaLastLogTime[playerUID] = deltaTime
+    }
+
+    func SetCurrentTimestamp(timestamp int) {
+        _CurrentTimestamp = timestamp
+    }
+
+    func GetCurrentTimestamp() int {
+        return _CurrentTimestamp
+    }
+
+    // ==========================
+    // Runtime Balance
+    // ==========================
+
+    func RecalculateTotalIncomePerSecond(playerUID UUID) {
+        InitPlayerInventory(playerUID)
+
+        var totalIncome List<int> = List<int>{0}
+        for slot = 0, GetPlayerInventoryMaxSlot(playerUID), 1 {
+            if !HasPetInInventoryAt(playerUID, slot) {
+                continue
+            }
+
+            var petIncome List<int> = GetPlayerInventoryPetValueBySlot(playerUID, slot, InventoryDefinitions.PET_INCOME) as List<int>
+            if petIncome == nil || List.Length(petIncome) == 0 {
+                continue
+            }
+
+            totalIncome = BigNumberHandler.AddNumber(totalIncome, petIncome)
+        }
+
+        _PlayerTotalIncomePerSecond[playerUID] = BigNumberHandler.MultiplyListIntByFloatV3(totalIncome, InventoryDefinitions.INCOME_PERCENT)
+    }
+
+    async func UpdatePlayerInventoryBalanceLoop(playerUID UUID) {
+        if IsPlayerUpdatingInventoryBalance(playerUID) {
+            return
+        }
+
+        SetPlayerUpdatingInventoryBalance(playerUID, true)
+        wait UpdateInventoryBalanceOffline(playerUID)
+
+        while Map.ContainKey(_PlayerInventoryBalance, playerUID) {
+            UpdatePlayerInventoryBalance(playerUID)
+            wait WaitForMillisecond(1000)
+        }
+    }
+
+    async func UpdateInventoryBalanceOffline(playerUID UUID) {
+        InitPlayerInventory(playerUID)
+
+        var deltaTime int = _PlayerDeltaLastLogTime[playerUID]
+        var totalIncome List<int> = GetTotalIncomePerSecond(playerUID)
+        var multiplyRate float = _PlayerMultiplyRate[playerUID]
+
+        var incAmount List<int> = BigNumberHandler.MultiplyListIntByFloatV3(BigNumberHandler.MultiplyNumber(totalIncome, List<int>{deltaTime}), multiplyRate)
+        var newBalance List<int> = BigNumberHandler.AddNumber(GetPlayerInventoryBalance(playerUID), incAmount)
+        var maxCap List<int> = BigNumberHandler.MultiplyListIntByFloatV3(BigNumberHandler.MultiplyNumber(totalIncome, List<int>{3, InventoryDefinitions.ONE_HOUR_SECONDS}), multiplyRate)
+
+        SetPlayerInventoryBalance(playerUID, BigNumberHandler.GetMinListNum(newBalance, maxCap))
+    }
+
+    func UpdatePlayerInventoryBalance(playerUID UUID) {
+        InitPlayerInventory(playerUID)
+
+        var currentBalance List<int> = GetPlayerInventoryBalance(playerUID)
+        var totalIncome List<int> = GetTotalIncomePerSecond(playerUID)
+        var incBalance List<int> = BigNumberHandler.MultiplyListIntByFloatV3(totalIncome, _PlayerMultiplyRate[playerUID])
+
+        SetPlayerInventoryBalance(playerUID, BigNumberHandler.AddNumber(currentBalance, incBalance))
+    }
+
+    // ==========================
+    // Internal Helpers
+    // ==========================
+
+    func AppendPlayerInventoryPet(playerUID UUID, pet Map<string, object>) bool {
+        InitPlayerInventory(playerUID)
+
+        var normalizedPet Map<string, object> = NormalizeInventoryPet(pet)
+        var petIndex string = normalizedPet[InventoryDefinitions.PET_INDEX] as string
+        if petIndex != "" && Map.ContainKey(_PlayerInventoryPetIndexes[playerUID], petIndex) {
+            return false
+        }
+
+        List.Append(_PlayerInventoryPets[playerUID], normalizedPet)
+        if petIndex != "" {
+            _PlayerInventoryPetIndexes[playerUID][petIndex] = true
+        }
+        return true
+    }
+
+    func RemovePlayerInventoryPet(playerUID UUID, slot int) {
+        InitPlayerInventory(playerUID)
+
+        if slot < 0 || List.Length(_PlayerInventoryPets[playerUID]) <= slot {
+            return
+        }
+
+        var petIndex string = GetPlayerInventoryPetValueBySlot(playerUID, slot, InventoryDefinitions.PET_INDEX) as string
+        List.RemoveAt(_PlayerInventoryPets[playerUID], slot)
+        if petIndex != "" {
+            Map.Remove(_PlayerInventoryPetIndexes[playerUID], petIndex)
+        }
+    }
+
+    func GetPlayerInventoryDataJson(playerUID UUID) string {
+        InitPlayerInventory(playerUID)
+        var jsonData List<Map<string, string>> = List<Map<string, string>>{}
+        for _, inventoryData in _PlayerInventoryPets[playerUID] {
+            var data Map<string, string> = Map<string, string>{}
+            data[InventoryDefinitions.DATA_PET_ID] = "" + inventoryData[InventoryDefinitions.PET_ID]
+            data[InventoryDefinitions.DATA_PET_MUTATION_ID] = "" + inventoryData[InventoryDefinitions.PET_MUTATION_ID]
+            data[InventoryDefinitions.DATA_PET_WEATHER_IDS] = DataUtils.ListIntToStringUseComma(inventoryData[InventoryDefinitions.PET_WEATHER_IDS] as List<int>, ",")
+            data[InventoryDefinitions.DATA_PET_LEVEL] = "" + inventoryData[InventoryDefinitions.PET_LEVEL]
+            data[InventoryDefinitions.DATA_PET_INDEX] = inventoryData[InventoryDefinitions.PET_INDEX] as string
+            data[InventoryDefinitions.DATA_PET_STORE_TIME] = "" + inventoryData[InventoryDefinitions.PET_STORE_TIME]
+            List.Append(jsonData, data)
+        }
+
+        return DataUtils.ListKeyValueToJsonString(jsonData)
+    }
+
+    func NormalizeInventoryPet(pet Map<string, object>) Map<string, object> {
+        var result Map<string, object> = Map<string, object>{
+            InventoryDefinitions.PET_ID: DEFAULT_PET_ID,
+            InventoryDefinitions.PET_MUTATION_ID: DEFAULT_MUTATION_ID,
+            InventoryDefinitions.PET_WEATHER_IDS: List<int>{},
+            InventoryDefinitions.PET_LEVEL: DEFAULT_LEVEL,
+            InventoryDefinitions.PET_INDEX: DEFAULT_PET_INDEX,
+            InventoryDefinitions.PET_PASSIVE: DEFAULT_PET_PASSIVE,
+        }
+
+        if pet == nil {
+            return result
+        }
+
+        if Map.ContainKey(pet, InventoryDefinitions.PET_ID) && pet[InventoryDefinitions.PET_ID] != nil {
+            result[InventoryDefinitions.PET_ID] = pet[InventoryDefinitions.PET_ID]
+        }
+        if Map.ContainKey(pet, InventoryDefinitions.PET_MUTATION_ID) && pet[InventoryDefinitions.PET_MUTATION_ID] != nil {
+            result[InventoryDefinitions.PET_MUTATION_ID] = pet[InventoryDefinitions.PET_MUTATION_ID]
+        }
+        if Map.ContainKey(pet, InventoryDefinitions.PET_WEATHER_IDS) && pet[InventoryDefinitions.PET_WEATHER_IDS] != nil {
+            result[InventoryDefinitions.PET_WEATHER_IDS] = pet[InventoryDefinitions.PET_WEATHER_IDS]
+        }
+        if Map.ContainKey(pet, InventoryDefinitions.PET_LEVEL) && pet[InventoryDefinitions.PET_LEVEL] != nil {
+            result[InventoryDefinitions.PET_LEVEL] = pet[InventoryDefinitions.PET_LEVEL]
+        }
+        if Map.ContainKey(pet, InventoryDefinitions.PET_INDEX) && pet[InventoryDefinitions.PET_INDEX] != nil {
+            result[InventoryDefinitions.PET_INDEX] = pet[InventoryDefinitions.PET_INDEX]
+        }
+        if Map.ContainKey(pet, InventoryDefinitions.PET_STORE_TIME) && pet[InventoryDefinitions.PET_STORE_TIME] != nil {
+            result[InventoryDefinitions.PET_STORE_TIME] = pet[InventoryDefinitions.PET_STORE_TIME]
+        }
+        if Map.ContainKey(pet, InventoryDefinitions.PET_PASSIVE) && pet[InventoryDefinitions.PET_PASSIVE] != nil {
+            result[InventoryDefinitions.PET_PASSIVE] = pet[InventoryDefinitions.PET_PASSIVE]
+        }
+        if Map.ContainKey(pet, InventoryDefinitions.PET_INCOME) && pet[InventoryDefinitions.PET_INCOME] != nil {
+            result[InventoryDefinitions.PET_INCOME] = pet[InventoryDefinitions.PET_INCOME]
+        }
+
+        return result
+    }
+
+    func CloneInventoryPet(pet Map<string, object>) Map<string, object> {
+        var result Map<string, object> = NormalizeInventoryPet(pet)
+
+        var weatherIds List<int> = result[InventoryDefinitions.PET_WEATHER_IDS] as List<int>
+        if weatherIds != nil {
+            result[InventoryDefinitions.PET_WEATHER_IDS] = List.Clone(weatherIds) as List<int>
+        }
+
+        var income List<int> = result[InventoryDefinitions.PET_INCOME] as List<int>
+        if income != nil {
+            result[InventoryDefinitions.PET_INCOME] = List.Clone(income) as List<int>
+        }
+
+        return result
+    }
+
+    func IsValidInventoryPetId(petId int) bool {
+        return petId >= 0
+    }
+
+    func IsValidInventoryPetValue(pet Map<string, object>) bool {
+        if pet == nil || !Map.ContainKey(pet, InventoryDefinitions.PET_ID) {
+            return false
+        }
+
+        return IsValidInventoryPetId(pet[InventoryDefinitions.PET_ID] as int)
+    }
+
+    func HasPayloadFlag(payload Map<string, object>, key string) bool {
+        if !Map.ContainKey(payload, key) || payload[key] == nil {
+            return true
+        }
+
+        return payload[key] as bool
+    }
+
+    func GetPayloadTimestamp(payload Map<string, object>) int {
+        if Map.ContainKey(payload, InventoryDefinitions.PAYLOAD_TIMESTAMP) && payload[InventoryDefinitions.PAYLOAD_TIMESTAMP] != nil {
+            return payload[InventoryDefinitions.PAYLOAD_TIMESTAMP] as int
+        }
+
+        return GetCurrentTimestamp()
+    }
+}

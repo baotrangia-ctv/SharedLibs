@@ -1,0 +1,58 @@
+import "StdLibrary.fcc" as StdLib
+import "EditorGenLib.fcc" as EditorLib
+
+// Shared Inventory is the Storage-derived pet inventory module.
+// It is intentionally distinct from StealAPet's source InventoryManager,
+// which owns mutagens, weather generators, and event pets.
+static graph InventoryDefinitions {
+    MODULE_NAME string = "Inventory"
+    SOURCE_FEATURE string = "Storage"
+
+    DATABASE_TYPE string = "InventoryStorage"
+    SHEET_STORAGE string = "PlayerSave"
+    KEY_STORAGE_PETS string = "pStoragePets"
+    KEY_STORAGE_BALANCE string = "pStorageBalance"
+    MAP_CODE string = ""
+
+    LOCK_DURATION int = 28800
+    INCOME_PERCENT float = 0.04
+    ONE_HOUR_SECONDS int = 3600
+
+    PET_ID string = "PetId"
+    PET_MUTATION_ID string = "MutationId"
+    PET_WEATHER_IDS string = "WeatherIds"
+    PET_LEVEL string = "Level"
+    PET_INDEX string = "PetIndex"
+    PET_STORE_TIME string = "StoreTime"
+    PET_PASSIVE string = "Passive"
+    PET_INCOME string = "Income"
+
+    DATA_PET_ID string = "Id"
+    DATA_PET_MUTATION_ID string = "M"
+    DATA_PET_WEATHER_IDS string = "W"
+    DATA_PET_LEVEL string = "Lv"
+    DATA_PET_INDEX string = "Idx"
+    DATA_PET_STORE_TIME string = "ST"
+
+    PAYLOAD_PLAYER_UID string = "PlayerUID"
+    PAYLOAD_PET_SLOT string = "PetSlot"
+    PAYLOAD_PET string = "Pet"
+    PAYLOAD_TIMESTAMP string = "Timestamp"
+    PAYLOAD_PLAYER_AVAILABLE string = "PlayerAvailable"
+    PAYLOAD_PET_INTERACTABLE string = "PetInteractable"
+    PAYLOAD_FEATURE_ENABLED string = "FeatureEnabled"
+    PAYLOAD_BASE_SLOT_AVAILABLE string = "BaseSlotAvailable"
+
+    STATUS_NO_ERROR string = "NoError"
+    STATUS_INVALID_VALUE string = "InvalidValue"
+    STATUS_PLAYER_NOT_AVAILABLE string = "PlayerNoExist"
+    STATUS_PLAYER_FULL_INVENTORY string = "PlayerFullStorage"
+    STATUS_PLAYER_FULL_BASE string = "PlayerFullBase"
+    STATUS_PET_NOT_INTERACTIVE string = "PetNoInteractive"
+    STATUS_PET_NOT_FOUND string = "PetNoExist"
+    STATUS_PET_LOCKED string = "PetLock"
+    STATUS_PET_INDEX_CONFLICT string = "PetIndexConflict"
+    STATUS_FEATURE_LOCK string = "FeatureLock"
+    STATUS_INVENTORY_NOT_READY string = "InventoryNotReady"
+    STATUS_INVENTORY_CAPACITY_NOT_READY string = "InventoryCapacityNotReady"
+}
