@@ -1,0 +1,83 @@
+import "List.fcc" as List
+import "StdLibrary.fcc" as StdLib
+import "EditorGenLib.fcc" as EditorLib
+
+import "../Configs/GlobalTimerSyncDefinitions.fcg" as GlobalTimerSyncDefinitions
+import "./TimeManager.fcg" as TimeManager
+
+// Shared countdown core for RegionAdjusted and FixedEpoch consumers.
+// Durations and the returned durationLeftMs are milliseconds.
+static graph GlobalTimerSync {
+    MILLISECONDS_PER_SECOND int = 1000
+    SECONDS_PER_HOUR int = 3600
+    SECONDS_PER_MINUTE int = 60
+
+    func GetGlobalWaveState(anchorMode int, waveDurations List<int>, epochOffset object, out var waveIndex int, out var durationLeftMs int) {
+        waveIndex = 0
+        durationLeftMs = 0
+
+        if waveDurations == nil || List.Length(waveDurations) == 0 {
+            return
+        }
+
+        var totalDurationMs int = 0
+        for key, waveDuration in waveDurations {
+            if waveDuration <= 0 {
+                return
+            }
+
+            totalDurationMs += waveDuration
+        }
+
+        if totalDurationMs <= 0 {
+            return
+        }
+
+        var elapsedSeconds int = GetElapsedSeconds(anchorMode, epochOffset)
+        var elapsedMs int = elapsedSeconds * MILLISECONDS_PER_SECOND
+        var passedDurationMs int = elapsedMs % totalDurationMs
+
+        // Wave indices are one-based for the public contract. Modulo makes the
+        // sequence restart at wave 1 after the total duration.
+        waveIndex = 1
+        for i = 0, List.Length(waveDurations), 1 {
+            var currentDurationMs int = waveDurations[i]
+            if passedDurationMs < currentDurationMs {
+                durationLeftMs = currentDurationMs - passedDurationMs
+                return
+            }
+
+            passedDurationMs -= currentDurationMs
+            waveIndex += 1
+        }
+
+        // This is the exact total-duration boundary. Normalize it to wave 1
+        // instead of exposing a zero-duration transient state.
+        waveIndex = 1
+        durationLeftMs = waveDurations[0]
+    }
+
+    func GetElapsedSeconds(anchorMode int, epochOffset object) int {
+        if anchorMode == GlobalTimerSyncDefinitions.ANCHOR_MODE_REGION_ADJUSTED {
+            TimeManager.GetHMS(out var hour, out var minute, out var second)
+
+            var phaseOffsetSeconds int = 0
+            if epochOffset != nil {
+                phaseOffsetSeconds = epochOffset as int
+            }
+
+            return hour * SECONDS_PER_HOUR + minute * SECONDS_PER_MINUTE + second + phaseOffsetSeconds
+        }
+
+        if anchorMode == GlobalTimerSyncDefinitions.ANCHOR_MODE_FIXED_EPOCH {
+            var fixedEpoch int = GlobalTimerSyncDefinitions.DEFAULT_FIXED_EPOCH_OFFSET
+            if epochOffset != nil {
+                fixedEpoch = epochOffset as int
+            }
+
+            return TimeManager.GetCurrentTimestamp() - fixedEpoch
+        }
+
+        return 0
+    }
+}

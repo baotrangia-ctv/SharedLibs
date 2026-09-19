@@ -1,7 +1,7 @@
 {
   "projects": {
     "steal_a_pet": {
-      "path": "../../../StealAPet",
+      "path": "D:\\Craftland\\StealAPet",
       "access": "read-only"
     },
     "shared_libs": {

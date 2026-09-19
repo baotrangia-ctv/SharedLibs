@@ -1,0 +1,11 @@
+import "StdLibrary.fcc" as StdLib
+import "EditorGenLib.fcc" as EditorLib
+
+static graph GlobalTimerSyncDefinitions {
+    ANCHOR_MODE_REGION_ADJUSTED int = 0
+    ANCHOR_MODE_FIXED_EPOCH int = 1
+
+    // Rotation Shop's source epoch. Consumers may pass another epoch instead.
+    DEFAULT_FIXED_EPOCH_OFFSET int = 1776880800
+}
+

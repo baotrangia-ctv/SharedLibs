@@ -1,0 +1,91 @@
+import "Map.fcc" as Map
+import "List.fcc" as List
+import "StdLibrary.fcc" as StdLib
+import "EditorGenLib.fcc" as EditorLib
+
+// Preserved anchor surface from StealAPet's TimeManager.fcg.
+// Unrelated Flags, weekend, and date-formatting behavior stays source-owned.
+static graph TimeManager {
+    GMTREGION Map<string, int> = Map<string, int>{
+        "TW": 28800,
+        "SG": 28800,
+        "BD": 21600,
+        "IND": 19800,
+        "EUROPE": 7200,
+        "RU": 10800,
+        "NA": -14400,
+        "PK": 18000,
+        "VN": 25200,
+        "ID": 25200,
+        "ME": 25200,
+        "TH": 25200,
+        "BR": -10800,
+        "SAC": -10800,
+        "US": -18000,
+    }
+
+    SECONDS_PER_DAY int = 86400
+
+    _DebugTime int
+    _HasDebug bool
+
+    event OnAwake() {
+        _DebugTime = GetServerTimestamp()
+        _HasDebug = false
+    }
+
+    func GetCurrentTimestamp() int {
+        if _HasDebug {
+            return _DebugTime
+        }
+
+        return GetServerTimestamp()
+    }
+
+    func GetDayIndexGMT(timeStamp int) int {
+        var dayIndex int = 0
+
+        dayIndex = timeStamp + GMTREGION[GetServerRegion()]
+        dayIndex = dayIndex / SECONDS_PER_DAY
+
+        return dayIndex
+    }
+
+    func GetTimeGMT(timeStamp int) int {
+        var time int = 0
+        if (_HasDebug) {
+            time = _DebugTime + GMTREGION[GetServerRegion()]
+        } else {
+            time = timeStamp + GMTREGION[GetServerRegion()]
+        }
+        return time
+    }
+
+    func GetHMS(out var hour int, out var minute int, out var second int) {
+        var timestamp int = GetTimeGMT(GetServerTimestamp())
+
+        hour = timestamp / 3600
+        minute = (timestamp % 3600) / 60
+        second = timestamp % 60
+    }
+
+    func GetDebug() bool {
+        return _HasDebug
+    }
+
+    func SetDebugTime(timestamp int) {
+        _HasDebug = true
+        _DebugTime = timestamp
+    }
+
+    func AddOneDayDebugTime() {
+        _HasDebug = true
+        _DebugTime += SECONDS_PER_DAY
+    }
+
+    func AddOneHourDebugTime() {
+        _HasDebug = true
+        _DebugTime += 3600
+    }
+}
+
