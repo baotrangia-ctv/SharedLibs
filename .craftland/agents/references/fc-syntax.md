@@ -38,10 +38,11 @@ Library import:
 import "StdLibrary.fcc" as StdLib
 ```
 
-Script reference import:
+Script reference import (`as Alias` is optional):
 
 ```fcg
 import ScriptName as Alias from "./ScriptName.fcg"
+import ScriptName from "./ScriptName.fcg"
 ```
 
 ## Header Declarations

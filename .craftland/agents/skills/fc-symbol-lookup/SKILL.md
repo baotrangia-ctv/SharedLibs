@@ -35,6 +35,7 @@ This skill covers both official and project-defined FC symbols:
 
 - Official APIs, types, functions, imports, events, enums, components, and function signatures.
 - Project-generated custom events, custom enums, custom components, declare graphs, graph public properties, UI control component types, and generated project symbol names.
+- Asset registration symbols in `EditorGenLib.fcc`: `ERes*` / `EResKey*` enums and the `Res` declare graph. This skill verifies whether they exist; if a needed one is missing, route to `fc-asset-registration` to create it instead of concluding the asset is unusable.
 - Referenced package symbols from:
    - `Temp/UGCLanguage/editorGen/<libId>.fcc`
    - `Temp/UGCLanguage/packages/<libId>/*.fcc`
@@ -59,7 +60,7 @@ Then broaden only if the likely `.fcc` files do not contain a usable symbol. Sea
 
 When search output is large, do not manually scan a noisy result set and stop early. Filter again with the strongest candidate term, exact symbol fragment, type name, event name, enum name, component name, graph name, or likely function prefix.
 
-For FC symbols, treat `.fcc` declarations as the primary source. Confirm import, namespace, signature, fields, platform, and deprecation status from the `.fcc` file that owns the declaration.
+For FC symbols, treat `.fcc` declarations as the primary source. Confirm import, namespace, signature, fields, platform, and deprecation status from the `.fcc` file that owns the declaration. If a declaration has `[deprecated]` and its preceding `//@deprecated` comment says `Use X instead`, generate `X`, not the deprecated symbol.
 
 Do not assume library names from general programming concepts. The owning `.fcc` may be named after a project-specific domain rather than the generic concept the user used.
 
@@ -80,7 +81,7 @@ For every symbol you will use, record:
 
 - The source file or MCP document that confirms the symbol.
 - The import statement, if one is required.
-- The namespace alias to use in code.
+- Whether a namespace alias is needed to resolve an actual ambiguity.
 - The exact function signature, type declaration, event parameters, enum members, component fields, graph name, or public property declaration.
 - Any platform or type constraints.
 
@@ -89,7 +90,7 @@ For every symbol you will use, record:
 - Add an import only after confirming the owning `.fcc` file.
 - Keep aliases consistent with confirmed examples or local project style.
 - Do not assume common libraries are already imported.
-- Do not call library functions without a namespace unless the `.fcc` confirms they are global symbols.
+- Prefer unqualified API, event, and type symbols after importing their owning `.fcc`; use `Alias.Symbol` only to resolve an actual ambiguous identifier. Keep required static graph and cross-script member qualification.
 - Referenced package `.fcc` files under `Temp/UGCLanguage/packages/<libId>/` are only lookup sources. Do not use that physical path in code imports. Use the `.fcc` filename or an existing relative import style; the compiler resolves it through `fcconfig.json` directory protocols.
 
 ## If Lookup Fails

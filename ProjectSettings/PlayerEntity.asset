@@ -52,18 +52,7 @@
   },
   "editorLockValue": false,
   "editorVisibleValue": true,
-  "ecaProps": {
-    "Player": {},
-    "FightingEntity": {},
-    "AimableEntity": {},
-    "Entity": {},
-    "ScoreableEntity": {},
-    "RankableEntity": {},
-    "Visibility": {},
-    "BuffableEntity": {},
-    "FormulableEntity": {},
-    "AnimationControllerAble": {}
-  },
+  "ecaProps": {},
   "ecaScript": null,
   "ecaScripts": [
     {
@@ -303,7 +292,11 @@
     "playerskill_eclipseman_cd_percent": 100,
     "DisableEnemyFootstepVibrate": false,
     "EnableCheckPlayerMatchState": false,
-    "receive_damage": 100
+    "receive_damage": 100,
+    "AOIGridSize": 33,
+    "EnableDownloadOnDemand": false,
+    "max_ugc_dash_speed_up_scale": 4.6,
+    "max_ugc_run_speed_up_scale": 4
   },
   "physicsData": {
     "ECCTParam_Gravity": {
@@ -332,7 +325,7 @@
   "modOpen": true,
   "avatarType": 0,
   "genderType": 0,
-  "usePDV2": false,
+  "usePDV2": true,
   "showSwitch": false
 }
-//"{FE:{"v":"1.18.4494106","c":{"FF":5001},"s":100}
+//"{FE:{"v":"1.19.4646566","c":{"FF":5001},"s":100}

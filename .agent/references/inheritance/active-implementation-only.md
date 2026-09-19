@@ -1,0 +1,26 @@
+# Active Implementation Only
+
+- Perform active-version and deprecation analysis before copying APIs.
+- Inspect whether the source contains:
+  - deprecated methods
+  - legacy implementations
+  - versioned APIs
+  - commented-out flows
+  - compatibility wrappers
+  - duplicate implementations
+  - old feature flags
+  - unused files
+  - replaced event handlers
+- If multiple versions exist, inherit only the latest active version by default.
+- Older versions may be included only when:
+  - they are still called by active runtime code
+  - they are required for migration or backward compatibility
+  - the reason is documented
+  - they are isolated from the primary generic API
+- Do not classify APIs as deprecated only from their names. Verify current call sites, runtime entry points, event registration, config references, feature flags, and compatibility needs.
+- Produce an API inventory before implementation with:
+  - API
+  - version
+  - call sites
+  - status
+  - inheritance decision

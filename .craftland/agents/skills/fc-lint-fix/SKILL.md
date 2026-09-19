@@ -48,6 +48,26 @@ The compiler's `-e` option expects the editorGen directory, not the `EditorGenLi
 <ProjectRoot>\Temp\UGCLanguage\editorGen
 ```
 
+## Model And Session Markers (Required)
+
+Every `fccompile` invocation that compiles sources (any command with `-i`) must include `-agent <model> -session <session-id>`. This enables local compile event collection. Craftland Studio may later upload these compile-result records through its EventLog service; session IDs are aggregation keys only and must contain no private content.
+
+Build the model marker as follows:
+
+- `-agent` identifies the **model**, not the coding-agent host product. Use the exact model identifier exposed by your system or runtime.
+- Do not use product names such as `codex`, `cursor`, or `aismith`.
+- Never guess the model name. If no model identity is available, use `unknown-model`.
+
+Build the session marker as follows:
+
+- Prefer the stable session/conversation ID exposed by your host.
+- If the host exposes no ID, generate one globally unique ID once and reuse it for every compile in the current conversation.
+- Never generate a new session ID per compile invocation.
+- The ID is only an aggregation key. It must not contain user, project, path, prompt, or other private content.
+- Use only letters, digits, `-` and `_` in both markers (replace other characters with `-`).
+
+If the compiler rejects the flag with an error like `flag provided but not defined: -agent` (or `-session`), the compiler is an older version: retry the same command without that flag.
+
 ## Run Validation
 
 Run from the project root. Match the VS Code extension's compiler invocation shape: pass source roots through `-i` and rely on compiler defaults for editorGen and symbol paths.
@@ -55,13 +75,13 @@ Run from the project root. Match the VS Code extension's compiler invocation sha
 Final local compiler validation:
 
 ```powershell
-<Compiler> -i Assets
+<Compiler> -i Assets -agent <model> -session <session-id>
 ```
 
 Optional fast metadata-only precheck:
 
 ```powershell
-<Compiler> -i Assets -m
+<Compiler> -i Assets -m -agent <model> -session <session-id>
 ```
 
 `-m` means compile to metadata only. In the compiler, it still runs preprocessing and precompiler validation, but skips the final `Compiler()` phase. It can catch many syntax, import, type, and symbol issues quickly, but it is not a full compile and must not be the final validation for delivered `.fcg` / `.fcc` edits.
@@ -69,7 +89,7 @@ Optional fast metadata-only precheck:
 If the project has multiple source roots, join them with `;`, matching `fcconfig.json` / extension source roots:
 
 ```powershell
-<Compiler> -i "Assets;Other/AssetsFolder"
+<Compiler> -i "Assets;Other/AssetsFolder" -agent <model> -session <session-id>
 ```
 
 Do not pass `-e` or `-s` unless you must override compiler defaults. If overriding:
@@ -77,9 +97,9 @@ Do not pass `-e` or `-s` unless you must override compiler defaults. If overridi
 - `-e` must be the editorGen directory, for example `Temp\UGCLanguage\editorGen`.
 - `-s` is joined with the current working directory by the compiler, so use a project-relative path such as `Temp\UGCLanguage\editorGen\EditorGenSymbol.json`.
 
-`fccompile.exe -i Assets` matches the VS Code extension full compiler invocation. Use it as the default final validation for pure `.fcg` / `.fcc` edits.
+`fccompile.exe -i Assets -agent <model> -session <session-id>` matches the VS Code extension full compiler invocation plus the required compile event markers. Use it as the default final validation for pure `.fcg` / `.fcc` edits.
 
-Use Craftland Studio MCP `game-build` + `game-console-get-logs` as the final validation when the task touches UI assets, scene entities, script attachments, `button.clickHandlers`, or other editor-owned data. Without an editor process, local full compile (`<Compiler> -i Assets`) is only a fallback and the final response must state that full editor validation was not run.
+Use Craftland Studio MCP `game-build` + `game-console-get-logs` as the final validation when the task touches UI assets, scene entities, script attachments, `button.clickHandlers`, or other editor-owned data. Without an editor process, local full compile (`<Compiler> -i Assets -agent <model> -session <session-id>`) is only a fallback and the final response must state that full editor validation was not run.
 
 ## Fix Loop
 
@@ -107,7 +127,7 @@ If errors remain after 3 rounds, stop and report:
 - Vector construction: use `Vector3{x, y, z}`.
 - Vector component access: use `pos.X`, `pos.Y`, `pos.Z`.
 - HUD button callback: use `func OnClick(button entity<UIWidgetButton>, player entity<Player>)`.
-- Custom UI asset id: cast strings with `"asset-id" as CustomUIAssetID`.
+- Asset/scene/entity/widget reference: never cast hardcoded id strings to asset id types or pass names as string literals; use registered `ERes*` symbols (see `fc-asset-registration`).
 - Namespaced call: use the import alias confirmed by the source `.fcc`.
 - Platform mismatch: verify `[platform_client]` or `[platform_server]`.
 - Client/server event mismatch: put the platform decorator on the `graph`, not on the event listener inside the graph body.

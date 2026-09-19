@@ -1,6 +1,6 @@
 ---
 name: fc-asset-check
-description: Trigger when a task involves Craftland Studio assets, UI, scene entities, assetIds, entityIds, script attachments, button bindings, or current editor state.
+description: Trigger when a task involves Craftland Studio assets, UI, scene entities, assetIds, entityIds, script attachments, button bindings, or current editor state. For asset registration, use fc-asset-registration.
 ---
 
 # Craftland Studio Asset Validity Check
@@ -18,6 +18,7 @@ This skill only checks Craftland Studio asset validity and current editor state.
 1. If you only need to verify FC-referenceable symbols, do not use this skill. Use `fc-symbol-lookup`.
 2. If you need to verify assets, scene entities, UI controls, script attachments, button callbacks, or asset properties, use Craftland Studio MCP.
 3. If you need to create or modify assets, entities, UI, script attachments, or button callbacks, use MCP and verify the written state afterwards.
+4. If FC code references a specific asset, scene, scene entity, or UI widget known at edit time, or a registration must be created or removed, use `fc-asset-registration` (registration-first policy, generated symbol usage, MCP registration workflow). This skill only verifies editor state; it does not own the registration workflow.
 
 ## Current Editor Asset Verification
 
@@ -36,6 +37,7 @@ If MCP is unavailable, do not claim that current editor asset state has been ver
 ## Missing Data Handling
 
 - If an asset or entity is missing from MCP, stop and ask whether the user wants to create/register it manually in Craftland Studio or allow the agent to create/update it through MCP.
+- If the asset exists but its FC registration symbol (`ERes*`, `EResKey*`, `Res` member) is missing, register it through `fc-asset-registration` instead of asking the user to do it manually, as long as the target asset and key intent are unambiguous.
 - If the asset exists in MCP but the FC symbol is unavailable, tell the user to save the project or regenerate `Temp/UGCLanguage/editorGen/`, then verify the symbol with `fc-symbol-lookup`.
 - Read related `.meta` files for fileId confirmation only when MCP does not expose the required fileId.
 
@@ -43,7 +45,7 @@ If MCP is unavailable, do not claim that current editor asset state has been ver
 
 - Do not write FC code that assumes a missing asset, entity, assetId, or entityId exists.
 - Do not modify generated files under `Temp/UGCLanguage/editorGen/`.
-- Do not manually edit editor-owned serialized assets to fake registration.
+- Do not manually edit editor-owned serialized assets to fake registration, including `ProjectSettings/ResourceRegisteration.asset`.
 
 ## After MCP Writes
 
@@ -52,6 +54,7 @@ When the task creates or updates editor-owned data through MCP, verify the writt
 - After creating or updating an asset, use `asset-get` to confirm that the asset exists and has the expected properties.
 - After creating or updating an entity, use `asset-entity-get` to confirm the entity id, type, parent, transform, and relevant dynamic properties.
 - After attaching a script, verify the entity `scripts` data with `asset-entity-get`.
+- After an asset registration upsert or remove, verify the generated symbols in `EditorGenLib.fcc` through `fc-symbol-lookup`.
 - After wiring a UI button, verify `button.clickHandlers` with `asset-entity-get`.
 - Treat `asset-refresh` as a disk re-import operation. Do not run it on newly modified MCP assets unless persistence has been confirmed, because refresh may discard editor-memory changes that have not been saved yet.
 
