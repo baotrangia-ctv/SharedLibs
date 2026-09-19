@@ -1,0 +1,630 @@
+import "Map.fcc" as Map
+import "List.fcc" as List
+import "Player.fcc" as Player
+import "Database.fcc" as Database
+import "Convert.fcc" as Convert
+import "StdLibrary.fcc" as StdLib
+import "EditorGenLib.fcc" as EditorLib
+
+import "../Consts/DailyMissionsDefinitions.fcg" as DailyMissionsDefinitions
+import "../Configs/DailyMissionsConfigs.fcg" as DailyMissionsConfigs
+import "../Configs/DailyMissionMilestonesConfigs.fcg" as DailyMissionMilestonesConfigs
+import "../Utils/DataUtils.fcg" as DataUtils
+import "../Utils/DailyRewardsTime.fcg" as DailyRewardsTime
+import "../CoreLib/DatabaseController.fcg" as DatabaseController
+
+static graph DailyMissionsManager {
+    _LoginDate Map<UUID, int>
+    _MissionsProgress Map<UUID, Map<int, int>>
+    _ClaimedMissions Map<UUID, List<int>>
+    _ClaimedMilestones Map<UUID, List<int>>
+    _MilestonePoints Map<UUID, int>
+
+    event OnAwake() {
+        Init()
+        DatabaseController.RegisterDatabase(DailyMissionsDefinitions.DATABASE_TYPE)
+    }
+
+    event OnPlayerJoin(player entity<Player>) {
+        InitPlayer(player<Player>.UserUID)
+    }
+
+    func Init() {
+        if _LoginDate != nil {
+            return
+        }
+
+        _LoginDate = Map<UUID, int>{}
+        _MissionsProgress = Map<UUID, Map<int, int>>{}
+        _ClaimedMissions = Map<UUID, List<int>>{}
+        _ClaimedMilestones = Map<UUID, List<int>>{}
+        _MilestonePoints = Map<UUID, int>{}
+    }
+
+    func InitPlayer(playerUID UUID) {
+        Init()
+
+        if Map.ContainKey(_LoginDate, playerUID) {
+            return
+        }
+
+        _LoginDate[playerUID] = 0
+        _MissionsProgress[playerUID] = Map<int, int>{}
+        _ClaimedMissions[playerUID] = List<int>{}
+        _ClaimedMilestones[playerUID] = List<int>{}
+        _MilestonePoints[playerUID] = 0
+    }
+
+    // ==========================
+    // Load Data
+    // ==========================
+
+    event OnDatabaseLoad(playerUID UUID, databaseType string) {
+        if databaseType == DailyMissionsDefinitions.DATABASE_TYPE {
+            LoadDatabase(playerUID)
+        }
+    }
+
+    async func LoadDatabase(playerUID UUID) {
+        InitPlayer(playerUID)
+
+        wait ReadFromDataStoreSteady(
+            DailyMissionsDefinitions.SHEET_DAILY_MISSIONS,
+            playerUID,
+            DailyMissionsDefinitions.KEY_DAILY_MISSIONS,
+            out var rawDailyMissions,
+            DailyMissionsDefinitions.MAP_CODE,
+            out var statusCode,
+        )
+
+        if statusCode != StatusCode.NoError {
+            wait DatabaseController.RetryLoadData(
+                DailyMissionsDefinitions.SHEET_DAILY_MISSIONS,
+                playerUID,
+                DailyMissionsDefinitions.KEY_DAILY_MISSIONS,
+                out var retryDailyMissions,
+                DailyMissionsDefinitions.MAP_CODE,
+                out var retryStatusCode,
+            )
+
+            rawDailyMissions = retryDailyMissions
+            statusCode = retryStatusCode
+            if statusCode != StatusCode.NoError {
+                OnlineLog("[DailyMissionsManager] Load failed: " + playerUID + " " + statusCode)
+                return
+            }
+        }
+
+        ExtractDatabase(playerUID, rawDailyMissions as string)
+        DatabaseController.SetDatabaseReady(playerUID, DailyMissionsDefinitions.DATABASE_TYPE, true)
+
+        UpdateDailyMissionsProgress(playerUID, DailyMissionsDefinitions.ACTION_LOGIN, nil)
+    }
+
+    func ExtractDatabase(playerUID UUID, rawData string) {
+        InitPlayer(playerUID)
+
+        var jsonData List<Map<string, string>> = DataUtils.JsonStringToListKeyValueV2(rawData)
+        var result Map<string, string> = Map<string, string>{
+            DailyMissionsDefinitions.DATA_LOGIN_DATE: "0",
+            DailyMissionsDefinitions.DATA_MISSION_IDS: "",
+            DailyMissionsDefinitions.DATA_MISSIONS_PROGRESS: "",
+            DailyMissionsDefinitions.DATA_CLAIMED_MISSIONS: "",
+            DailyMissionsDefinitions.DATA_CLAIMED_MILESTONES: "",
+            DailyMissionsDefinitions.DATA_MILESTONE_POINTS: "0",
+        }
+
+        if jsonData != nil && List.Length(jsonData) > 0 {
+            for key, value in jsonData[0] {
+                result[key] = value
+            }
+        }
+
+        StringToInt(result[DailyMissionsDefinitions.DATA_LOGIN_DATE], out var loginDate, out var loginDateOk)
+        StringToInt(result[DailyMissionsDefinitions.DATA_MILESTONE_POINTS], out var milestonePoints, out var milestonePointsOk)
+
+        if !loginDateOk {
+            loginDate = 0
+        }
+        if !milestonePointsOk {
+            milestonePoints = 0
+        }
+
+        _LoginDate[playerUID] = loginDate
+        SetMissionsProgress(
+            playerUID,
+            DataUtils.StringToListIntV2(result[DailyMissionsDefinitions.DATA_MISSION_IDS], ","),
+            DataUtils.StringToListIntV2(result[DailyMissionsDefinitions.DATA_MISSIONS_PROGRESS], ","),
+        )
+        _ClaimedMissions[playerUID] = DataUtils.StringToListIntV2(result[DailyMissionsDefinitions.DATA_CLAIMED_MISSIONS], ",")
+        _ClaimedMilestones[playerUID] = DataUtils.StringToListIntV2(result[DailyMissionsDefinitions.DATA_CLAIMED_MILESTONES], ",")
+        _MilestonePoints[playerUID] = milestonePoints
+    }
+
+    // ==========================
+    // Save Data
+    // ==========================
+
+    event OnDatabaseSave(playerUID UUID, databaseType string) {
+        if databaseType == DailyMissionsDefinitions.DATABASE_TYPE {
+            SaveDatabase(playerUID)
+        }
+    }
+
+    async func SaveDatabase(playerUID UUID) {
+        InitPlayer(playerUID)
+
+        GetMissionsProgress(playerUID, out var missionIds, out var missionsProgress)
+        var data List<Map<string, string>> = List<Map<string, string>>{
+            Map<string, string>{
+                DailyMissionsDefinitions.DATA_LOGIN_DATE: "" + _LoginDate[playerUID],
+                DailyMissionsDefinitions.DATA_MISSION_IDS: DataUtils.ListIntToString(missionIds),
+                DailyMissionsDefinitions.DATA_MISSIONS_PROGRESS: DataUtils.ListIntToString(missionsProgress),
+                DailyMissionsDefinitions.DATA_CLAIMED_MISSIONS: DataUtils.ListIntToString(_ClaimedMissions[playerUID]),
+                DailyMissionsDefinitions.DATA_CLAIMED_MILESTONES: DataUtils.ListIntToString(_ClaimedMilestones[playerUID]),
+                DailyMissionsDefinitions.DATA_MILESTONE_POINTS: "" + _MilestonePoints[playerUID],
+            },
+        }
+
+        var rawData string = DataUtils.ListKeyValueToJsonString(data)
+        wait WriteToDataStoreV2(
+            DailyMissionsDefinitions.SHEET_DAILY_MISSIONS,
+            playerUID,
+            DailyMissionsDefinitions.KEY_DAILY_MISSIONS,
+            rawData,
+            DailyMissionsDefinitions.MAP_CODE,
+            out var statusCode,
+        )
+
+        if statusCode == StatusCode.NoError {
+            DatabaseController.SetDatabaseSaved(playerUID, DailyMissionsDefinitions.DATABASE_TYPE, true)
+        } else {
+            OnlineLog("[DailyMissionsManager] Save failed: " + playerUID + " " + statusCode)
+        }
+
+        WaitForMillisecond(3000)
+        ClearData(playerUID)
+    }
+
+    func ClearData(playerUID UUID) {
+        Map.Remove(_LoginDate, playerUID)
+        Map.Remove(_MissionsProgress, playerUID)
+        Map.Remove(_ClaimedMissions, playerUID)
+        Map.Remove(_ClaimedMilestones, playerUID)
+        Map.Remove(_MilestonePoints, playerUID)
+    }
+
+    // ==========================
+    // Daily Mission State
+    // ==========================
+
+    func RefreshDailyMissions(playerUID UUID, out var isReset bool) {
+        InitPlayer(playerUID)
+        isReset = false
+
+        var currentDate int = GetCurrentDate()
+        if _LoginDate[playerUID] != currentDate {
+            isReset = true
+            _LoginDate[playerUID] = currentDate
+            ResetDailyMissions(playerUID, currentDate)
+        }
+    }
+
+    func ResetDailyMissions(playerUID UUID, currentDate int) {
+        InitPlayer(playerUID)
+
+        _MissionsProgress[playerUID] = Map<int, int>{}
+        _ClaimedMissions[playerUID] = List<int>{}
+        _ClaimedMilestones[playerUID] = List<int>{}
+        _MilestonePoints[playerUID] = 0
+
+        var missionIds List<int> = DailyMissionsConfigs.GetMissionsByDay(GetCycleDayByDate(currentDate))
+        for _, missionId in missionIds {
+            _MissionsProgress[playerUID][missionId] = 0
+        }
+    }
+
+    func SetMissionsProgress(playerUID UUID, missionIds List<int>, missionsProgress List<int>) {
+        InitPlayer(playerUID)
+        _MissionsProgress[playerUID] = Map<int, int>{}
+
+        for key, missionId in missionIds {
+            var progress int = 0
+            if key < List.Length(missionsProgress) {
+                progress = missionsProgress[key]
+            }
+            _MissionsProgress[playerUID][missionId] = progress
+        }
+    }
+
+    func GetDailyMissionIds(playerUID UUID) List<int> {
+        InitPlayer(playerUID)
+        RefreshDailyMissions(playerUID, out var isReset)
+        return DailyMissionsConfigs.GetMissionsByDay(GetCycleDayByDate(_LoginDate[playerUID]))
+    }
+
+    func GetLoginDate(playerUID UUID) int {
+        InitPlayer(playerUID)
+        return _LoginDate[playerUID]
+    }
+
+    func GetDailyMissions(playerUID UUID) List<Map<string, object>> {
+        InitPlayer(playerUID)
+        RefreshDailyMissions(playerUID, out var isReset)
+
+        var missions List<Map<string, object>> = List<Map<string, object>>{}
+        for _, missionId in GetDailyMissionIds(playerUID) {
+            List.Append(missions, Map<string, object>{
+                "ID": missionId,
+                "Type": DailyMissionsConfigs.GetMissionType(missionId),
+                "Description": DailyMissionsConfigs.GetMissionDescription(missionId),
+                "Action": DailyMissionsConfigs.GetMissionAction(missionId),
+                "TargetCondition": DailyMissionsConfigs.GetMissionTargetCondition(missionId),
+                "RewardType": DailyMissionsConfigs.GetMissionRewardsType(missionId),
+                "RewardValue": DailyMissionsConfigs.GetMissionRewardsValue(missionId),
+                "Progress": GetDailyMissionProgress(playerUID, missionId),
+                "TargetProgress": DailyMissionsConfigs.GetMissionTargetValue(missionId),
+                "IsCompleted": IsDailyMissionCompleted(playerUID, missionId),
+                "IsClaimed": HasClaimedDailyMissionReward(playerUID, missionId),
+                "Priority": DailyMissionsConfigs.GetMissionPriority(missionId),
+            })
+        }
+
+        return missions
+    }
+
+    func GetMissionProgress(playerUID UUID, missionId int) int {
+        InitPlayer(playerUID)
+        if !Map.ContainKey(_MissionsProgress[playerUID], missionId) {
+            return 0
+        }
+        return _MissionsProgress[playerUID][missionId]
+    }
+
+    func GetDailyMissionProgress(playerUID UUID, missionId int) int {
+        InitPlayer(playerUID)
+        RefreshDailyMissions(playerUID, out var isReset)
+        return GetMissionProgress(playerUID, missionId)
+    }
+
+    func GetMissionsProgress(playerUID UUID, out var missionIds List<int>, out var missionsProgress List<int>) {
+        InitPlayer(playerUID)
+        missionIds = List<int>{}
+        missionsProgress = List<int>{}
+
+        for missionId, progress in _MissionsProgress[playerUID] {
+            List.Append(missionIds, missionId)
+            List.Append(missionsProgress, progress)
+        }
+    }
+
+    func SetDailyMissionProgress(playerUID UUID, missionId int, progress int) {
+        InitPlayer(playerUID)
+        RefreshDailyMissions(playerUID, out var isReset)
+
+        if !List.Contain(GetDailyMissionIds(playerUID), missionId) {
+            return
+        }
+
+        var targetProgress int = DailyMissionsConfigs.GetMissionTargetValue(missionId)
+        if targetProgress > 0 && progress > targetProgress {
+            progress = targetProgress
+        }
+        if progress < 0 {
+            progress = 0
+        }
+
+        _MissionsProgress[playerUID][missionId] = progress
+    }
+
+    func UpdateDailyMissionsProgress(playerUID UUID, actionType string, conditions List<string>) {
+        if !DatabaseController.IsDatabaseReady(playerUID, DailyMissionsDefinitions.DATABASE_TYPE) {
+            return
+        }
+
+        RefreshDailyMissions(playerUID, out var isReset)
+        for _, missionId in GetDailyMissionIds(playerUID) {
+            if DailyMissionsConfigs.GetMissionAction(missionId) == actionType {
+                UpdateDailyMissionProgress(playerUID, missionId, conditions, out var isProgressChanged)
+            }
+        }
+    }
+
+    func UpdateDailyMissionProgressValue(playerUID UUID, actionType string, progress int) {
+        if !DatabaseController.IsDatabaseReady(playerUID, DailyMissionsDefinitions.DATABASE_TYPE) {
+            return
+        }
+
+        RefreshDailyMissions(playerUID, out var isReset)
+        for _, missionId in GetDailyMissionIds(playerUID) {
+            if DailyMissionsConfigs.GetMissionAction(missionId) == actionType {
+                SetDailyMissionProgress(playerUID, missionId, progress)
+            }
+        }
+    }
+
+    func UpdateDailyMissionProgress(playerUID UUID, missionId int, conditions List<string>, out var isProgressChanged bool) {
+        isProgressChanged = false
+        var previousProgress int = GetMissionProgress(playerUID, missionId)
+        var actionType string = DailyMissionsConfigs.GetMissionAction(missionId)
+
+        if actionType == DailyMissionsDefinitions.ACTION_SAVE_MONEY || actionType == DailyMissionsDefinitions.ACTION_REBIRTH {
+            return
+        }
+
+        if !CheckMissionTargetCondition(missionId, conditions) {
+            return
+        }
+
+        SetDailyMissionProgress(playerUID, missionId, previousProgress + 1)
+        isProgressChanged = previousProgress != GetMissionProgress(playerUID, missionId)
+    }
+
+    func CheckMissionTargetCondition(missionId int, conditions List<string>) bool {
+        var targetCondition string = DailyMissionsConfigs.GetMissionTargetCondition(missionId)
+        if targetCondition == nil || targetCondition == "" {
+            return true
+        }
+        return List.Contain(conditions, targetCondition)
+    }
+
+    func IsDailyMissionCompleted(playerUID UUID, missionId int) bool {
+        var targetProgress int = DailyMissionsConfigs.GetMissionTargetValue(missionId)
+        if targetProgress <= 0 {
+            return false
+        }
+        return GetDailyMissionProgress(playerUID, missionId) >= targetProgress
+    }
+
+    func HasClaimedDailyMissionReward(playerUID UUID, missionId int) bool {
+        InitPlayer(playerUID)
+        return List.Contain(_ClaimedMissions[playerUID], missionId)
+    }
+
+    func GetClaimedMissions(playerUID UUID) List<int> {
+        InitPlayer(playerUID)
+        return List.Clone(_ClaimedMissions[playerUID]) as List<int>
+    }
+
+    func CanClaimDailyMissionReward(playerUID UUID, missionId int) bool {
+        InitPlayer(playerUID)
+        RefreshDailyMissions(playerUID, out var isReset)
+        if !List.Contain(GetDailyMissionIds(playerUID), missionId) {
+            return false
+        }
+        if HasClaimedDailyMissionReward(playerUID, missionId) {
+            return false
+        }
+        return IsDailyMissionCompleted(playerUID, missionId)
+    }
+
+    func GetMilestonePoints(playerUID UUID) int {
+        InitPlayer(playerUID)
+        return _MilestonePoints[playerUID]
+    }
+
+    func GetDailyMilestoneGiftId(milestone int) int {
+        return DailyMissionMilestonesConfigs.GetRewardId(milestone)
+    }
+
+    func GetClaimedMilestones(playerUID UUID) List<int> {
+        InitPlayer(playerUID)
+        return List.Clone(_ClaimedMilestones[playerUID]) as List<int>
+    }
+
+    func IncMilestonePoints(playerUID UUID, points int) {
+        InitPlayer(playerUID)
+        _MilestonePoints[playerUID] = _MilestonePoints[playerUID] + points
+    }
+
+    // ==========================
+    // Actions: Request -> Check -> Process
+    // ==========================
+
+    func RequestClaimDailyMission(
+        playerUID UUID,
+        missionId int,
+        canDeliverRewards bool,
+        out var statusCode string,
+        out var rewards List<Map<string, object>>,
+        out var milestonePoints int) {
+        rewards = List<Map<string, object>>{}
+        milestonePoints = 0
+
+        CheckConditionClaimDailyMission(playerUID, missionId, canDeliverRewards, out var checkStatusCode)
+        statusCode = checkStatusCode
+        if statusCode != DailyMissionsDefinitions.STATUS_NO_ERROR {
+            return
+        }
+
+        ProcessClaimDailyMission(playerUID, missionId, out var processRewards, out var processMilestonePoints)
+        rewards = processRewards
+        milestonePoints = processMilestonePoints
+    }
+
+    func CheckConditionClaimDailyMission(playerUID UUID, missionId int, canDeliverRewards bool, out var statusCode string) {
+        statusCode = DailyMissionsDefinitions.STATUS_NO_ERROR
+
+        if !DatabaseController.IsDatabaseReady(playerUID, DailyMissionsDefinitions.DATABASE_TYPE) {
+            statusCode = DailyMissionsDefinitions.STATUS_DATABASE_NOT_READY
+            return
+        }
+        if !canDeliverRewards {
+            statusCode = DailyMissionsDefinitions.STATUS_REWARD_DELIVERY_UNAVAILABLE
+            return
+        }
+        if !List.Contain(GetDailyMissionIds(playerUID), missionId) {
+            statusCode = DailyMissionsDefinitions.STATUS_MISSION_INVALID
+            return
+        }
+        if HasClaimedDailyMissionReward(playerUID, missionId) {
+            statusCode = DailyMissionsDefinitions.STATUS_MISSION_CLAIMED
+            return
+        }
+        if !IsDailyMissionCompleted(playerUID, missionId) {
+            statusCode = DailyMissionsDefinitions.STATUS_MISSION_INCOMPLETED
+            return
+        }
+
+        var rewardTypes List<int> = DailyMissionsConfigs.GetMissionRewardsType(missionId)
+        var rewardValues List<string> = DailyMissionsConfigs.GetMissionRewardsValue(missionId)
+        for key, rewardType in rewardTypes {
+            if key >= List.Length(rewardValues) || rewardType <= 0 || rewardValues[key] == nil || rewardValues[key] == "" {
+                statusCode = DailyMissionsDefinitions.STATUS_REWARD_INVALID
+                return
+            }
+
+            if rewardType == DailyMissionsDefinitions.REWARD_TYPE_MILESTONE_POINT {
+                StringToInt(rewardValues[key], out var points, out var pointsOk)
+                if !pointsOk || points <= 0 {
+                    statusCode = DailyMissionsDefinitions.STATUS_REWARD_INVALID
+                    return
+                }
+            }
+        }
+    }
+
+    func ProcessClaimDailyMission(
+        playerUID UUID,
+        missionId int,
+        out var rewards List<Map<string, object>>,
+        out var milestonePoints int) {
+        InitPlayer(playerUID)
+        rewards = List<Map<string, object>>{}
+        milestonePoints = 0
+        List.Append(_ClaimedMissions[playerUID], missionId)
+
+        var rewardTypes List<int> = DailyMissionsConfigs.GetMissionRewardsType(missionId)
+        var rewardValues List<string> = DailyMissionsConfigs.GetMissionRewardsValue(missionId)
+        for key, rewardType in rewardTypes {
+            var rewardValue string = rewardValues[key]
+            if rewardType == DailyMissionsDefinitions.REWARD_TYPE_MILESTONE_POINT {
+                StringToInt(rewardValue, out var points, out var isSuccess)
+                if isSuccess {
+                    IncMilestonePoints(playerUID, points)
+                    milestonePoints = milestonePoints + points
+                }
+            } else {
+                List.Append(rewards, Map<string, object>{
+                    "Type": rewardType,
+                    "Value": rewardValue,
+                })
+            }
+        }
+    }
+
+    func RequestClaimAllCompletedDailyMissions(
+        playerUID UUID,
+        canDeliverRewards bool,
+        out var statusCode string,
+        out var claimedMissionIds List<int>,
+        out var rewards List<Map<string, object>>,
+        out var milestonePoints int) {
+        claimedMissionIds = List<int>{}
+        rewards = List<Map<string, object>>{}
+        milestonePoints = 0
+
+        CheckConditionClaimAllCompletedDailyMissions(playerUID, canDeliverRewards, out var checkStatusCode)
+        statusCode = checkStatusCode
+        if statusCode != DailyMissionsDefinitions.STATUS_NO_ERROR {
+            return
+        }
+
+        for _, missionId in GetDailyMissionIds(playerUID) {
+            if !CanClaimDailyMissionReward(playerUID, missionId) {
+                continue
+            }
+
+            RequestClaimDailyMission(
+                playerUID,
+                missionId,
+                canDeliverRewards,
+                out var missionStatus,
+                out var missionRewards,
+                out var missionMilestonePoints,
+            )
+            if missionStatus != DailyMissionsDefinitions.STATUS_NO_ERROR {
+                continue
+            }
+
+            List.Append(claimedMissionIds, missionId)
+            milestonePoints = milestonePoints + missionMilestonePoints
+            for _, reward in missionRewards {
+                List.Append(rewards, reward)
+            }
+        }
+    }
+
+    func CheckConditionClaimAllCompletedDailyMissions(playerUID UUID, canDeliverRewards bool, out var statusCode string) {
+        statusCode = DailyMissionsDefinitions.STATUS_NO_ERROR
+        if !DatabaseController.IsDatabaseReady(playerUID, DailyMissionsDefinitions.DATABASE_TYPE) {
+            statusCode = DailyMissionsDefinitions.STATUS_DATABASE_NOT_READY
+            return
+        }
+        if !canDeliverRewards {
+            statusCode = DailyMissionsDefinitions.STATUS_REWARD_DELIVERY_UNAVAILABLE
+        }
+    }
+
+    func RequestClaimDailyMilestone(
+        playerUID UUID,
+        milestone int,
+        canDeliverRewards bool,
+        out var statusCode string,
+        out var rewardId int) {
+        rewardId = 0
+
+        CheckConditionClaimDailyMilestone(playerUID, milestone, canDeliverRewards, out var checkStatusCode)
+        statusCode = checkStatusCode
+        if statusCode != DailyMissionsDefinitions.STATUS_NO_ERROR {
+            return
+        }
+
+        ProcessClaimDailyMilestone(playerUID, milestone, out var processedRewardId)
+        rewardId = processedRewardId
+    }
+
+    func CheckConditionClaimDailyMilestone(playerUID UUID, milestone int, canDeliverRewards bool, out var statusCode string) {
+        statusCode = DailyMissionsDefinitions.STATUS_NO_ERROR
+
+        if !DatabaseController.IsDatabaseReady(playerUID, DailyMissionsDefinitions.DATABASE_TYPE) {
+            statusCode = DailyMissionsDefinitions.STATUS_DATABASE_NOT_READY
+            return
+        }
+        if !canDeliverRewards {
+            statusCode = DailyMissionsDefinitions.STATUS_REWARD_DELIVERY_UNAVAILABLE
+            return
+        }
+
+        var rewardId int = DailyMissionMilestonesConfigs.GetRewardId(milestone)
+        if rewardId <= 0 {
+            statusCode = DailyMissionsDefinitions.STATUS_MILESTONE_INVALID
+            return
+        }
+        if List.Contain(_ClaimedMilestones[playerUID], milestone) {
+            statusCode = DailyMissionsDefinitions.STATUS_MILESTONE_CLAIMED
+            return
+        }
+        if GetMilestonePoints(playerUID) < milestone {
+            statusCode = DailyMissionsDefinitions.STATUS_MILESTONE_NOT_ENOUGH
+        }
+    }
+
+    func ProcessClaimDailyMilestone(playerUID UUID, milestone int, out var rewardId int) {
+        InitPlayer(playerUID)
+        rewardId = DailyMissionMilestonesConfigs.GetRewardId(milestone)
+        List.Append(_ClaimedMilestones[playerUID], milestone)
+    }
+
+    // ==========================
+    // Helpers and external APIs
+    // ==========================
+
+    func GetCurrentDate() int {
+        return DailyRewardsTime.GetDayIndexGMT(DailyRewardsTime.GetCurrentTimestamp())
+    }
+
+    func GetCycleDayByDate(dayIndex int) int {
+        return ((dayIndex + 3) % DailyMissionsDefinitions.DAYS_PER_WEEK) + 1
+    }
+}

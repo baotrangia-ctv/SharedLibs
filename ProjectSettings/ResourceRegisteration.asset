@@ -299,6 +299,30 @@
           },
           "scriptName": "DailyRewards",
           "children": []
+        },
+        {
+          "refer": {
+            "fileId": "nmih7op8ki-mpuoceio-0nluhune9bhl",
+            "filePath": "Assets\\CSV\\DailyMissions.csv",
+            "_tag": {
+              "type": "GFileRefer"
+            },
+            "fileType": "csv"
+          },
+          "scriptName": "DailyMissions",
+          "children": []
+        },
+        {
+          "refer": {
+            "fileId": "bow6xx035u5-mk6aq83b-m4sv7olu47c",
+            "filePath": "Assets\\CSV\\milestone.csv",
+            "_tag": {
+              "type": "GFileRefer"
+            },
+            "fileType": "csv"
+          },
+          "scriptName": "Milestone",
+          "children": []
         }
       ]
     },

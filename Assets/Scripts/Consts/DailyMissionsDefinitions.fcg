@@ -1,0 +1,64 @@
+import "StdLibrary.fcc" as StdLib
+import "EditorGenLib.fcc" as EditorLib
+
+static graph DailyMissionsDefinitions {
+    DATABASE_TYPE = "DailyMissions"
+
+    SHEET_DAILY_MISSIONS = "PlayerSave"
+    KEY_DAILY_MISSIONS = "pDailyMissions"
+    MAP_CODE = ""
+
+    DAYS_PER_WEEK int = 7
+    DAILY_MISSION_MILESTONE_ID int = 11
+    REWARD_TYPE_MILESTONE_POINT int = 8
+
+    DATA_LOGIN_DATE = "DailyMission_LoginDate"
+    DATA_MISSION_IDS = "DailyMission_MissionIds"
+    DATA_MISSIONS_PROGRESS = "DailyMission_MissionsProgress"
+    DATA_CLAIMED_MISSIONS = "DailyMission_ClaimedMissions"
+    DATA_CLAIMED_MILESTONES = "DailyMission_ClaimedMilestones"
+    DATA_MILESTONE_POINTS = "DailyMission_MilestonePoints"
+
+    CSV_DAILY_MISSION_ID int = 0
+    CSV_DAILY_MISSION_DAY int = 1
+    CSV_DAILY_MISSION_USER_TYPE int = 2
+    CSV_DAILY_MISSION_DESCRIPTION int = 3
+    CSV_DAILY_MISSION_ACTION int = 4
+    CSV_DAILY_MISSION_TARGET_VALUE int = 5
+    CSV_DAILY_MISSION_TARGET_CONDITION int = 6
+    CSV_DAILY_MISSION_REWARD_TYPE int = 7
+    CSV_DAILY_MISSION_REWARD_VALUE int = 8
+    CSV_DAILY_MISSION_PRIORITY int = 9
+
+    CSV_MILESTONE_ID int = 0
+    CSV_MILESTONE_TYPE int = 1
+    CSV_MILESTONE_VALUES int = 2
+    CSV_MILESTONE_REWARDS int = 3
+
+    ACTION_BUY_PETS = "BuyPets"
+    ACTION_CLAIM_INCOME = "ClaimIncome"
+    ACTION_LOCK_BASE = "LockBase"
+    ACTION_GET_PETS = "GetPets"
+    ACTION_REBIRTH = "Rebirth"
+    ACTION_SAVE_MONEY = "SaveMoney"
+    ACTION_FUSION_PETS = "FusionPets"
+    ACTION_STEAL_PET = "StealPet"
+    ACTION_HIT_PLAYER = "HitPlayer"
+    ACTION_BUY_ITEM = "BuyItem"
+    ACTION_BUY_RS_ITEM = "BuyRSItem"
+    ACTION_SPEND_PET_COINS = "SpendPetCoins"
+    ACTION_LOGIN = "Login"
+    ACTION_LUCKY_SPIN = "LuckySpin"
+    ACTION_ONLINE = "Online"
+
+    STATUS_NO_ERROR = "NoError"
+    STATUS_DATABASE_NOT_READY = "DatabaseNotReady"
+    STATUS_MISSION_INVALID = "MissionInvalid"
+    STATUS_MISSION_CLAIMED = "MissionClaimed"
+    STATUS_MISSION_INCOMPLETED = "MissionIncompleted"
+    STATUS_REWARD_INVALID = "RewardInvalid"
+    STATUS_REWARD_DELIVERY_UNAVAILABLE = "RewardDeliveryUnavailable"
+    STATUS_MILESTONE_INVALID = "MilestoneInvalid"
+    STATUS_MILESTONE_CLAIMED = "MilestoneClaimed"
+    STATUS_MILESTONE_NOT_ENOUGH = "MilestoneNotEnough"
+}

@@ -1,0 +1,153 @@
+import "Map.fcc" as Map
+import "List.fcc" as List
+import "CSVData.fcc" as CSVData
+import "Strings.fcc" as Strings
+import "StdLibrary.fcc" as StdLib
+import "EditorGenLib.fcc" as EditorLib
+
+import "../Consts/DailyMissionsDefinitions.fcg" as DailyMissionsDefinitions
+import "../Utils/DataUtils.fcg" as DataUtils
+
+static graph DailyMissionsConfigs {
+    _MissionId2Day Map<int, int>
+    _MissionId2Type Map<int, string>
+    _MissionId2Description Map<int, string>
+    _MissionId2Action Map<int, string>
+    _MissionId2TargetValue Map<int, int>
+    _MissionId2TargetCondition Map<int, string>
+    _MissionId2RewardType Map<int, string>
+    _MissionId2RewardValue Map<int, string>
+    _MissionId2Priority Map<int, int>
+    _Day2Missions Map<int, List<int>>
+
+    event OnAwake() {
+        _MissionId2Day = Map<int, int>{}
+        _MissionId2Type = Map<int, string>{}
+        _MissionId2Description = Map<int, string>{}
+        _MissionId2Action = Map<int, string>{}
+        _MissionId2TargetValue = Map<int, int>{}
+        _MissionId2TargetCondition = Map<int, string>{}
+        _MissionId2RewardType = Map<int, string>{}
+        _MissionId2RewardValue = Map<int, string>{}
+        _MissionId2Priority = Map<int, int>{}
+        _Day2Missions = Map<int, List<int>>{}
+
+        LoadDailyMissionConfigsFromCSV()
+    }
+
+    func LoadDailyMissionConfigsFromCSV() {
+        var missionConfigs List<List<object>> = CSVData.ReadCSV(EResCSV.DailyMissions)
+        if missionConfigs == nil || List.Length(missionConfigs) <= 2 {
+            return
+        }
+
+        for i = 2, List.Length(missionConfigs), 1 {
+            var missionInfo List<object> = missionConfigs[i]
+            var missionId int = missionInfo[DailyMissionsDefinitions.CSV_DAILY_MISSION_ID] as int
+
+            _MissionId2Day[missionId] = missionInfo[DailyMissionsDefinitions.CSV_DAILY_MISSION_DAY] as int
+            _MissionId2Type[missionId] = missionInfo[DailyMissionsDefinitions.CSV_DAILY_MISSION_USER_TYPE] as string
+            _MissionId2Description[missionId] = missionInfo[DailyMissionsDefinitions.CSV_DAILY_MISSION_DESCRIPTION] as string
+            _MissionId2Action[missionId] = missionInfo[DailyMissionsDefinitions.CSV_DAILY_MISSION_ACTION] as string
+            _MissionId2TargetValue[missionId] = missionInfo[DailyMissionsDefinitions.CSV_DAILY_MISSION_TARGET_VALUE] as int
+            _MissionId2TargetCondition[missionId] = missionInfo[DailyMissionsDefinitions.CSV_DAILY_MISSION_TARGET_CONDITION] as string
+            _MissionId2RewardType[missionId] = missionInfo[DailyMissionsDefinitions.CSV_DAILY_MISSION_REWARD_TYPE] as string
+            _MissionId2RewardValue[missionId] = missionInfo[DailyMissionsDefinitions.CSV_DAILY_MISSION_REWARD_VALUE] as string
+            _MissionId2Priority[missionId] = missionInfo[DailyMissionsDefinitions.CSV_DAILY_MISSION_PRIORITY] as int
+
+            var day int = _MissionId2Day[missionId]
+            if !Map.ContainKey(_Day2Missions, day) {
+                _Day2Missions[day] = List<int>{}
+            }
+
+            List.Append(_Day2Missions[day], missionId)
+        }
+    }
+
+    func GetMissionDay(missionId int) int {
+        return _MissionId2Day[missionId]
+    }
+
+    func GetMissionType(missionId int) string {
+        return _MissionId2Type[missionId]
+    }
+
+    func GetMissionDescription(missionId int) string {
+        return _MissionId2Description[missionId]
+    }
+
+    func GetMissionAction(missionId int) string {
+        return _MissionId2Action[missionId]
+    }
+
+    func GetMissionTargetValue(missionId int) int {
+        return _MissionId2TargetValue[missionId]
+    }
+
+    func GetMissionTargetCondition(missionId int) string {
+        return _MissionId2TargetCondition[missionId]
+    }
+
+    func GetMissionRewardsType(missionId int) List<int> {
+        if !Map.ContainKey(_MissionId2RewardType, missionId) {
+            return List<int>{}
+        }
+
+        return DataUtils.StringToListIntV2(_MissionId2RewardType[missionId], "|")
+    }
+
+    func GetMissionRewardsValue(missionId int) List<string> {
+        if !Map.ContainKey(_MissionId2RewardValue, missionId) {
+            return List<string>{}
+        }
+
+        return Split(_MissionId2RewardValue[missionId], "|")
+    }
+
+    func GetMissionPriority(missionId int) int {
+        if !Map.ContainKey(_MissionId2Priority, missionId) {
+            return 9999
+        }
+
+        return _MissionId2Priority[missionId]
+    }
+
+    func GetMissionsByDay(day int) List<int> {
+        var missions List<int> = List<int>{}
+        if Map.ContainKey(_Day2Missions, 0) {
+            missions = List.Clone(_Day2Missions[0]) as List<int>
+        }
+
+        if Map.ContainKey(_Day2Missions, day) {
+            var dayMissions List<int> = List.Clone(_Day2Missions[day]) as List<int>
+            for _, missionId in dayMissions {
+                List.Append(missions, missionId)
+            }
+        }
+
+        return SortAndFilterDuplicateValues(missions)
+    }
+
+    func SortAndFilterDuplicateValues(list List<int>) List<int> {
+        for i = 0, List.Length(list), 1 {
+            for j = i + 1, List.Length(list), 1 {
+                if list[i] < list[j] {
+                    var temp int = list[i]
+                    list[i] = list[j]
+                    list[j] = temp
+                }
+            }
+        }
+
+        var currentIndex int = 0
+        while currentIndex < List.Length(list) {
+            if currentIndex > 0 && list[currentIndex] == list[currentIndex - 1] {
+                List.RemoveAt(list, currentIndex)
+            } else {
+                currentIndex += 1
+            }
+        }
+
+        return list
+    }
+}

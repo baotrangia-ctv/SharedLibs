@@ -1,0 +1,61 @@
+import "Map.fcc" as Map
+import "List.fcc" as List
+import "CSVData.fcc" as CSVData
+import "StdLibrary.fcc" as StdLib
+import "EditorGenLib.fcc" as EditorLib
+
+import "../Consts/DailyMissionsDefinitions.fcg" as DailyMissionsDefinitions
+import "../Utils/DataUtils.fcg" as DataUtils
+
+static graph DailyMissionMilestonesConfigs {
+    _Milestone2RewardId Map<int, int>
+    _Milestones List<int>
+
+    event OnAwake() {
+        _Milestone2RewardId = Map<int, int>{}
+        _Milestones = List<int>{}
+
+        LoadDailyMissionMilestonesFromCSV()
+    }
+
+    func LoadDailyMissionMilestonesFromCSV() {
+        var milestoneConfigs List<List<object>> = CSVData.ReadCSV(EResCSV.Milestone)
+        if milestoneConfigs == nil || List.Length(milestoneConfigs) <= 2 {
+            return
+        }
+
+        for i = 2, List.Length(milestoneConfigs), 1 {
+            var milestoneInfo List<object> = milestoneConfigs[i]
+            var milestoneConfigId int = milestoneInfo[DailyMissionsDefinitions.CSV_MILESTONE_ID] as int
+            if milestoneConfigId != DailyMissionsDefinitions.DAILY_MISSION_MILESTONE_ID {
+                continue
+            }
+
+            var milestoneValues string = milestoneInfo[DailyMissionsDefinitions.CSV_MILESTONE_VALUES] as string
+            var rewardValues string = milestoneInfo[DailyMissionsDefinitions.CSV_MILESTONE_REWARDS] as string
+            var milestones List<int> = DataUtils.StringToListIntV2(milestoneValues, ";")
+            var rewardIds List<int> = DataUtils.StringToListIntV2(rewardValues, ";")
+
+            for key, milestone in milestones {
+                if key >= List.Length(rewardIds) {
+                    continue
+                }
+
+                _Milestone2RewardId[milestone] = rewardIds[key]
+                List.Append(_Milestones, milestone)
+            }
+        }
+    }
+
+    func GetMilestones() List<int> {
+        return List.Clone(_Milestones) as List<int>
+    }
+
+    func GetRewardId(milestone int) int {
+        if !Map.ContainKey(_Milestone2RewardId, milestone) {
+            return -1
+        }
+
+        return _Milestone2RewardId[milestone]
+    }
+}
