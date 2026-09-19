@@ -1,0 +1,100 @@
+import "Map.fcc" as Map
+import "List.fcc" as List
+import "StdLibrary.fcc" as StdLib
+
+import "../Configs/LeaderboardDefinitions.fcg" as LeaderboardDefinitions
+
+static graph LeaderboardMockScoreProvider {
+    MOCK_LOAD_DELAY_MS int = 250
+
+    _MockStates Map<string, string>
+
+    func Init() {
+        if _MockStates != nil {
+            return
+        }
+
+        _MockStates = Map<string, string>{
+            LeaderboardDefinitions.TYPE_INCOME: LeaderboardDefinitions.MOCK_STATE_SUCCESS,
+            LeaderboardDefinitions.TYPE_COLLECTION: LeaderboardDefinitions.MOCK_STATE_SUCCESS,
+        }
+    }
+
+    async func LoadScores(leaderboardType string, out var leaderboardDetails List<List<object>>, out var state string) {
+        Init()
+        WaitForMillisecond(MOCK_LOAD_DELAY_MS)
+
+        if !LeaderboardDefinitions.IsSupportedType(leaderboardType) {
+            leaderboardDetails = List<List<object>>{}
+            state = LeaderboardDefinitions.STATE_ERROR
+            return
+        }
+
+        var mockState string = _MockStates[leaderboardType]
+        if mockState == LeaderboardDefinitions.MOCK_STATE_ERROR {
+            leaderboardDetails = List<List<object>>{}
+            state = LeaderboardDefinitions.STATE_ERROR
+            return
+        }
+
+        if mockState == LeaderboardDefinitions.MOCK_STATE_EMPTY {
+            leaderboardDetails = List<List<object>>{}
+            state = LeaderboardDefinitions.STATE_EMPTY
+            return
+        }
+
+        if leaderboardType == LeaderboardDefinitions.TYPE_INCOME {
+            leaderboardDetails = GetIncomeScores()
+        } else {
+            leaderboardDetails = GetCollectionScores()
+        }
+
+        state = LeaderboardDefinitions.STATE_SUCCESS
+    }
+
+    func GetPlayerRankDetails(leaderboardType string, playerUID UUID) List<int> {
+        if leaderboardType == LeaderboardDefinitions.TYPE_INCOME {
+            return List<int>{4, 510250}
+        }
+
+        if leaderboardType == LeaderboardDefinitions.TYPE_COLLECTION {
+            return List<int>{3, 219}
+        }
+
+        return List<int>{-1, -1}
+    }
+
+    func SetMockState(leaderboardType string, state string) {
+        Init()
+
+        if !LeaderboardDefinitions.IsSupportedType(leaderboardType) {
+            return
+        }
+
+        if state != LeaderboardDefinitions.MOCK_STATE_SUCCESS && state != LeaderboardDefinitions.MOCK_STATE_EMPTY && state != LeaderboardDefinitions.MOCK_STATE_ERROR {
+            return
+        }
+
+        _MockStates[leaderboardType] = state
+    }
+
+    func GetIncomeScores() List<List<object>> {
+        return List<List<object>>{
+            List<object>{1, nil, 987654},
+            List<object>{2, nil, 875000},
+            List<object>{3, nil, 642500},
+            List<object>{4, nil, 510250},
+            List<object>{5, nil, 420100},
+        }
+    }
+
+    func GetCollectionScores() List<List<object>> {
+        return List<List<object>>{
+            List<object>{1, nil, 248, 86, "19/12"},
+            List<object>{2, nil, 231, 81, "17/11"},
+            List<object>{3, nil, 219, 78, "16/10"},
+            List<object>{4, nil, 205, 74, "15/9"},
+            List<object>{5, nil, 198, 71, "14/9"},
+        }
+    }
+}

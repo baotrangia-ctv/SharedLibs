@@ -1,0 +1,32 @@
+import "StdLibrary.fcc" as StdLib
+
+static graph LeaderboardDefinitions {
+    TYPE_INCOME string = "Income"
+    TYPE_COLLECTION string = "Collection"
+
+    STATE_LOADING string = "Loading"
+    STATE_SUCCESS string = "Success"
+    STATE_EMPTY string = "Empty"
+    STATE_ERROR string = "Error"
+
+    MOCK_STATE_SUCCESS string = "Success"
+    MOCK_STATE_EMPTY string = "Empty"
+    MOCK_STATE_ERROR string = "Error"
+
+    ROW_RANK_INDEX int = 0
+    ROW_PLAYER_UID_INDEX int = 1
+    ROW_SCORE_INDEX int = 2
+    ROW_COLLECTION_PETS_INDEX int = 3
+    ROW_COLLECTION_VARIANTS_INDEX int = 4
+
+    PLAYER_RANK_INDEX int = 0
+    PLAYER_SCORE_INDEX int = 1
+
+    func GetDefaultType() string {
+        return TYPE_INCOME
+    }
+
+    func IsSupportedType(leaderboardType string) bool {
+        return leaderboardType == TYPE_INCOME || leaderboardType == TYPE_COLLECTION
+    }
+}

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Leaderboard Source to Shared"
+  short_description: "Inherit Steal A Pet leaderboards faithfully"
+  default_prompt: "Use $leaderboard-source-to-shared to inherit the active Steal A Pet leaderboard system into SharedLibs."

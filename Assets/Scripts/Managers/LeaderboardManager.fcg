@@ -1,0 +1,102 @@
+import "Map.fcc" as Map
+import "List.fcc" as List
+import "StdLibrary.fcc" as StdLib
+
+import "../Configs/LeaderboardDefinitions.fcg" as LeaderboardDefinitions
+import "../Mockups/LeaderboardMockScoreProvider.fcg" as LeaderboardScoreProvider
+
+static graph LeaderboardManager {
+    _LeaderboardDetails Map<string, List<List<object>>>
+    _LeaderboardStates Map<string, string>
+    _LoadedLeaderboards Map<string, bool>
+
+    event OnAwake() {
+        Init()
+    }
+
+    // ==========================
+    // Initialization
+    // ==========================
+
+    func Init() {
+        if _LeaderboardDetails != nil {
+            return
+        }
+
+        _LeaderboardDetails = Map<string, List<List<object>>>{}
+        _LeaderboardStates = Map<string, string>{}
+        _LoadedLeaderboards = Map<string, bool>{}
+    }
+
+    // ==========================
+    // Load Data
+    // ==========================
+
+    async func RequestLeaderboard(leaderboardType string, playerUID UUID, out var leaderboardDetails List<List<object>>, out var playerRankDetails List<int>, out var state string) {
+        Init()
+
+        if !LeaderboardDefinitions.IsSupportedType(leaderboardType) {
+            leaderboardDetails = List<List<object>>{}
+            playerRankDetails = List<int>{-1, -1}
+            state = LeaderboardDefinitions.STATE_ERROR
+            return
+        }
+
+        if !_LoadedLeaderboards[leaderboardType] {
+            _LoadedLeaderboards[leaderboardType] = true
+            _LeaderboardStates[leaderboardType] = LeaderboardDefinitions.STATE_LOADING
+
+            wait LeaderboardScoreProvider.LoadScores(
+                leaderboardType,
+                out var loadedDetails,
+                out var loadedState,
+            )
+
+            _LeaderboardDetails[leaderboardType] = loadedDetails
+            _LeaderboardStates[leaderboardType] = loadedState
+        }
+
+        leaderboardDetails = List.Clone(_LeaderboardDetails[leaderboardType]) as List<List<object>>
+        playerRankDetails = LeaderboardScoreProvider.GetPlayerRankDetails(leaderboardType, playerUID)
+        state = _LeaderboardStates[leaderboardType]
+    }
+
+    func ReloadLeaderboard(leaderboardType string) {
+        Init()
+
+        if !LeaderboardDefinitions.IsSupportedType(leaderboardType) {
+            return
+        }
+
+        _LoadedLeaderboards[leaderboardType] = false
+        _LeaderboardDetails[leaderboardType] = List<List<object>>{}
+        _LeaderboardStates[leaderboardType] = LeaderboardDefinitions.STATE_LOADING
+    }
+
+    // ==========================
+    // Query APIs
+    // ==========================
+
+    func GetLeaderboardState(leaderboardType string) string {
+        Init()
+
+        if !LeaderboardDefinitions.IsSupportedType(leaderboardType) {
+            return LeaderboardDefinitions.STATE_ERROR
+        }
+
+        if !_LoadedLeaderboards[leaderboardType] {
+            return LeaderboardDefinitions.STATE_LOADING
+        }
+
+        return _LeaderboardStates[leaderboardType]
+    }
+
+    // ==========================
+    // Mock integration
+    // ==========================
+
+    func SetMockState(leaderboardType string, state string) {
+        LeaderboardScoreProvider.SetMockState(leaderboardType, state)
+        ReloadLeaderboard(leaderboardType)
+    }
+}
