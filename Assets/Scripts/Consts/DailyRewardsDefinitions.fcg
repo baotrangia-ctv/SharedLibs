@@ -1,0 +1,39 @@
+import "StdLibrary.fcc" as StdLib
+import "EditorGenLib.fcc" as EditorLib
+
+static graph DailyRewardsDefinitions {
+    DATABASE_TYPE = "DailyRewards"
+
+    SHEET_DAILY_REWARDS = "PlayerSave"
+    KEY_DAILY_REWARDS = "pDailyRewards"
+    MAP_CODE = ""
+
+    MAX_LOGIN_REWARD_DAY int = 7
+    SECONDS_PER_DAY int = 86400
+    REVIVAL_REWARD_RESET_SECONDS int = 1209600
+
+    DATA_LOGIN_DATE = "Activity_LoginDate"
+    DATA_LOGIN_STREAKS = "Activity_LoginStreaks"
+    DATA_CAN_CLAIM_DATES = "Activity_CanClaimDates"
+    DATA_USER_TYPE = "Activity_UserType"
+
+    USER_TYPE_NEW = "New"
+    USER_TYPE_REVIVAL = "Revival"
+    USER_TYPE_ACTIVE = "Active"
+
+    STATUS_NO_ERROR = "NoError"
+    STATUS_REWARD_NOT_AVAILABLE = "RewardNotAvailable"
+    STATUS_REWARD_ALREADY_CLAIMED = "RewardAlreadyClaimed"
+    STATUS_REWARD_INVALID = "RewardInvalid"
+
+    CSV_DAILY_REWARD_ID int = 0
+    CSV_DAILY_REWARD_DAY int = 1
+    CSV_DAILY_REWARD_USER_TYPE int = 2
+    CSV_DAILY_REWARD_REBIRTH_LEVEL int = 3
+    CSV_DAILY_REWARD_GIFT int = 4
+
+    PAYLOAD_PLAYER_UID = "PlayerUID"
+    PAYLOAD_REWARD_DATE = "RewardDate"
+    PAYLOAD_REBIRTH_LEVEL = "RebirthLevel"
+}
+

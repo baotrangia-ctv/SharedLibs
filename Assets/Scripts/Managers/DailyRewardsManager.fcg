@@ -1,0 +1,398 @@
+import "Map.fcc" as Map
+import "List.fcc" as List
+import "Player.fcc" as Player
+import "Database.fcc" as Database
+import "Convert.fcc" as Convert
+import "StdLibrary.fcc" as StdLib
+import "EditorGenLib.fcc" as EditorLib
+
+import "../Consts/DailyRewardsDefinitions.fcg" as DailyRewardsDefinitions
+import "../Consts/MailsDefinitions.fcg" as MailsDefinitions
+import "../Consts/StatusCodes.fcg" as StatusCodes
+import "../Configs/DailyRewardsConfigs.fcg" as DailyRewardsConfigs
+import "../Managers/MailsManager.fcg" as MailsManager
+import "../CoreLib/DatabaseController.fcg" as DatabaseController
+import "../Utils/DataUtils.fcg" as DataUtils
+import "../Utils/DailyRewardsTime.fcg" as DailyRewardsTime
+
+// Core Daily Rewards flow inherited from ActivitiesManager.
+// Consumer UI, prompt, user-type provider, and rebirth provider stay outside.
+static graph DailyRewardsManager {
+    _LoginDate Map<UUID, int>
+    _LoginStreaks Map<UUID, int>
+    _CanClaimDates Map<UUID, List<int>>
+    _ClaimedDates Map<UUID, List<int>>
+    _UserType Map<UUID, string>
+    // Consumer-provided, transient equivalent of
+    // PlayersManager.GetPlayerDeltaLastLogTime(playerUID).
+    _LastLoginDeltaSeconds Map<UUID, int>
+
+    event OnAwake() {
+        Init()
+        DatabaseController.RegisterDatabase(DailyRewardsDefinitions.DATABASE_TYPE)
+    }
+
+    event OnPlayerJoin(player entity<Player>) {
+        InitPlayer(player<Player>.UserUID)
+    }
+
+    func Init() {
+        if _LoginDate != nil {
+            return
+        }
+
+        _LoginDate = Map<UUID, int>{}
+        _LoginStreaks = Map<UUID, int>{}
+        _CanClaimDates = Map<UUID, List<int>>{}
+        _ClaimedDates = Map<UUID, List<int>>{}
+        _UserType = Map<UUID, string>{}
+        _LastLoginDeltaSeconds = Map<UUID, int>{}
+    }
+
+    func InitPlayer(playerUID UUID) {
+        Init()
+
+        if Map.ContainKey(_LoginDate, playerUID) {
+            return
+        }
+
+        _LoginDate[playerUID] = 0
+        _LoginStreaks[playerUID] = 0
+        _CanClaimDates[playerUID] = List<int>{}
+        _ClaimedDates[playerUID] = List<int>{}
+        _UserType[playerUID] = DailyRewardsDefinitions.USER_TYPE_ACTIVE
+        _LastLoginDeltaSeconds[playerUID] = 0
+    }
+
+    // ==========================
+    // Lifecycle and persistence
+    // ==========================
+
+    event OnDatabaseLoad(playerUID UUID, databaseType string) {
+        if databaseType == DailyRewardsDefinitions.DATABASE_TYPE {
+            LoadDatabase(playerUID)
+        }
+    }
+
+    async func LoadDatabase(playerUID UUID) {
+        InitPlayer(playerUID)
+
+        wait ReadFromDataStoreSteady(
+            DailyRewardsDefinitions.SHEET_DAILY_REWARDS,
+            playerUID,
+            DailyRewardsDefinitions.KEY_DAILY_REWARDS,
+            out var rawDailyRewards,
+            DailyRewardsDefinitions.MAP_CODE,
+            out var statusCode,
+        )
+
+        if statusCode != StatusCode.NoError {
+            wait DatabaseController.RetryLoadData(
+                DailyRewardsDefinitions.SHEET_DAILY_REWARDS,
+                playerUID,
+                DailyRewardsDefinitions.KEY_DAILY_REWARDS,
+                out var retryDailyRewards,
+                DailyRewardsDefinitions.MAP_CODE,
+                out var retryStatusCode,
+            )
+
+            rawDailyRewards = retryDailyRewards
+            statusCode = retryStatusCode
+            if statusCode != StatusCode.NoError {
+                OnlineLog("[DailyRewardsManager] Load failed: " + playerUID + " " + statusCode)
+                return
+            }
+        }
+
+        ExtractDatabase(playerUID, rawDailyRewards as string)
+        DatabaseController.SetDatabaseReady(playerUID, DailyRewardsDefinitions.DATABASE_TYPE, true)
+    }
+
+    event OnDatabaseSave(playerUID UUID, databaseType string) {
+        if databaseType == DailyRewardsDefinitions.DATABASE_TYPE {
+            SaveDatabase(playerUID)
+        }
+    }
+
+    async func SaveDatabase(playerUID UUID) {
+        InitPlayer(playerUID)
+
+        var data List<Map<string, string>> = List<Map<string, string>>{
+            Map<string, string>{
+                DailyRewardsDefinitions.DATA_LOGIN_DATE: "" + _LoginDate[playerUID],
+                DailyRewardsDefinitions.DATA_LOGIN_STREAKS: "" + _LoginStreaks[playerUID],
+                DailyRewardsDefinitions.DATA_CAN_CLAIM_DATES: DataUtils.ListIntToString(_CanClaimDates[playerUID]),
+                DailyRewardsDefinitions.DATA_USER_TYPE: _UserType[playerUID],
+            },
+        }
+
+        var rawData string = DataUtils.ListKeyValueToJsonString(data)
+        wait WriteToDataStoreV2(
+            DailyRewardsDefinitions.SHEET_DAILY_REWARDS,
+            playerUID,
+            DailyRewardsDefinitions.KEY_DAILY_REWARDS,
+            rawData,
+            DailyRewardsDefinitions.MAP_CODE,
+            out var statusCode,
+        )
+
+        if statusCode == StatusCode.NoError {
+            DatabaseController.SetDatabaseSaved(playerUID, DailyRewardsDefinitions.DATABASE_TYPE, true)
+        } else {
+            OnlineLog("[DailyRewardsManager] Save failed: " + playerUID + " " + statusCode)
+        }
+
+        WaitForMillisecond(3000)
+        ClearData(playerUID)
+    }
+
+    func ExtractDatabase(playerUID UUID, rawData string) {
+        InitPlayer(playerUID)
+
+        var jsonData List<Map<string, string>> = DataUtils.JsonStringToListKeyValueV2(rawData)
+        var result Map<string, string> = Map<string, string>{
+            DailyRewardsDefinitions.DATA_LOGIN_DATE: "0",
+            DailyRewardsDefinitions.DATA_LOGIN_STREAKS: "0",
+            DailyRewardsDefinitions.DATA_CAN_CLAIM_DATES: "",
+            DailyRewardsDefinitions.DATA_USER_TYPE: DailyRewardsDefinitions.USER_TYPE_ACTIVE,
+        }
+
+        if jsonData != nil && List.Length(jsonData) > 0 {
+            for key, value in jsonData[0] {
+                result[key] = value
+            }
+        }
+
+        StringToInt(result[DailyRewardsDefinitions.DATA_LOGIN_DATE], out var loginDate, out var loginDateOk)
+        StringToInt(result[DailyRewardsDefinitions.DATA_LOGIN_STREAKS], out var loginStreaks, out var loginStreaksOk)
+
+        if !loginDateOk {
+            loginDate = 0
+        }
+        if !loginStreaksOk {
+            loginStreaks = 0
+        }
+
+        _LoginDate[playerUID] = loginDate
+        _LoginStreaks[playerUID] = loginStreaks
+        _CanClaimDates[playerUID] = DataUtils.StringToListIntV2(result[DailyRewardsDefinitions.DATA_CAN_CLAIM_DATES], ",")
+
+        var storedUserType string = result[DailyRewardsDefinitions.DATA_USER_TYPE]
+        if storedUserType == nil || storedUserType == "" {
+            storedUserType = DailyRewardsDefinitions.USER_TYPE_ACTIVE
+        }
+        _UserType[playerUID] = storedUserType
+        _ClaimedDates[playerUID] = GetClaimedDates(playerUID)
+    }
+
+    func ClearData(playerUID UUID) {
+        Map.Remove(_LoginDate, playerUID)
+        Map.Remove(_LoginStreaks, playerUID)
+        Map.Remove(_CanClaimDates, playerUID)
+        Map.Remove(_ClaimedDates, playerUID)
+        Map.Remove(_UserType, playerUID)
+        Map.Remove(_LastLoginDeltaSeconds, playerUID)
+    }
+
+    // ==========================
+    // Daily reward state
+    // ==========================
+
+    func SetUserType(playerUID UUID, userType string) {
+        InitPlayer(playerUID)
+        if userType == nil || userType == "" {
+            _UserType[playerUID] = DailyRewardsDefinitions.USER_TYPE_ACTIVE
+            return
+        }
+        _UserType[playerUID] = userType
+    }
+
+    // Set this immediately before the first daily refresh after a player
+    // rejoins. The value is transient and is consumed by the next day-change
+    // refresh, so a stale provider value cannot reset future cycles repeatedly.
+    func SetLastLoginDeltaSeconds(playerUID UUID, deltaSeconds int) {
+        InitPlayer(playerUID)
+        _LastLoginDeltaSeconds[playerUID] = deltaSeconds
+    }
+
+    func GetUserType(playerUID UUID) string {
+        InitPlayer(playerUID)
+        return _UserType[playerUID]
+    }
+
+    func GetLoginDate(playerUID UUID) int {
+        InitPlayer(playerUID)
+        return _LoginDate[playerUID]
+    }
+
+    func GetLoginStreak(playerUID UUID) int {
+        InitPlayer(playerUID)
+        return _LoginStreaks[playerUID]
+    }
+
+    func SetLoginDate(playerUID UUID, date int) {
+        InitPlayer(playerUID)
+        _LoginDate[playerUID] = date
+    }
+
+    func UpdateLoginStreak(playerUID UUID) {
+        InitPlayer(playerUID)
+
+        _LoginStreaks[playerUID] = _LoginStreaks[playerUID] + 1
+        List.Append(_CanClaimDates[playerUID], _LoginStreaks[playerUID])
+
+        if _LoginStreaks[playerUID] > DailyRewardsDefinitions.MAX_LOGIN_REWARD_DAY {
+            _LoginStreaks[playerUID] = 1
+            _CanClaimDates[playerUID] = List<int>{1}
+            _ClaimedDates[playerUID] = List<int>{}
+            _UserType[playerUID] = DailyRewardsDefinitions.USER_TYPE_ACTIVE
+        }
+    }
+
+    func RefreshDailyRewards(playerUID UUID) {
+        InitPlayer(playerUID)
+
+        var currentDate int = DailyRewardsTime.GetDayIndexGMT(DailyRewardsTime.GetCurrentTimestamp())
+        if _LoginDate[playerUID] != currentDate {
+            SetLoginDate(playerUID, currentDate)
+
+            if _UserType[playerUID] == DailyRewardsDefinitions.USER_TYPE_REVIVAL &&
+                _LastLoginDeltaSeconds[playerUID] > DailyRewardsDefinitions.REVIVAL_REWARD_RESET_SECONDS {
+                ResetDailyRewardState(playerUID)
+            }
+
+            // This provider value describes the current rejoin only. Consume
+            // it after the day-change decision, matching source lifecycle.
+            _LastLoginDeltaSeconds[playerUID] = 0
+            UpdateLoginStreak(playerUID)
+        }
+
+        while List.Contain(_CanClaimDates[playerUID], 0) {
+            List.Remove(_CanClaimDates[playerUID], 0)
+        }
+        while List.Contain(_ClaimedDates[playerUID], 0) {
+            List.Remove(_ClaimedDates[playerUID], 0)
+        }
+    }
+
+    func ResetRevivalRewardCycle(playerUID UUID) {
+        InitPlayer(playerUID)
+        ResetDailyRewardState(playerUID)
+        _UserType[playerUID] = DailyRewardsDefinitions.USER_TYPE_REVIVAL
+    }
+
+    func ResetDailyRewardState(playerUID UUID) {
+        InitPlayer(playerUID)
+        _LoginStreaks[playerUID] = 0
+        _CanClaimDates[playerUID] = List<int>{}
+        _ClaimedDates[playerUID] = List<int>{}
+    }
+
+    func GetDailyRewards(playerUID UUID, rebirthLevel int) List<int> {
+        InitPlayer(playerUID)
+        RefreshDailyRewards(playerUID)
+
+        var rewards List<int> = List<int>{}
+        for day = 1, DailyRewardsDefinitions.MAX_LOGIN_REWARD_DAY + 1, 1 {
+            var giftId int = DailyRewardsConfigs.GetGiftByUserAndRebirthLevelInDay(_UserType[playerUID], rebirthLevel, day)
+            List.Append(rewards, giftId)
+        }
+        return rewards
+    }
+
+    func GetCanClaimDates(playerUID UUID) List<int> {
+        InitPlayer(playerUID)
+        return List.Clone(_CanClaimDates[playerUID]) as List<int>
+    }
+
+    func GetClaimedDates(playerUID UUID) List<int> {
+        InitPlayer(playerUID)
+
+        _ClaimedDates[playerUID] = List<int>{}
+        for date = 1, _LoginStreaks[playerUID] + 1, 1 {
+            if !List.Contain(_CanClaimDates[playerUID], date) {
+                List.Append(_ClaimedDates[playerUID], date)
+            }
+        }
+        return List.Clone(_ClaimedDates[playerUID]) as List<int>
+    }
+
+    func CanClaimDates(playerUID UUID) bool {
+        return List.Length(GetCanClaimDates(playerUID)) > 0
+    }
+
+    // ==========================
+    // Request -> Check -> Process
+    // ==========================
+
+    func RequestClaimDailyReward(playerUID UUID, rewardDate int, rebirthLevel int, out var statusCode string) {
+        CheckConditionClaimDailyReward(playerUID, rewardDate, rebirthLevel, out var checkStatusCode)
+        statusCode = checkStatusCode
+
+        if checkStatusCode != DailyRewardsDefinitions.STATUS_NO_ERROR {
+            return
+        }
+
+        ProcessClaimDailyReward(playerUID, rewardDate, rebirthLevel, out var processStatusCode)
+        statusCode = processStatusCode
+    }
+
+    func CheckConditionClaimDailyReward(playerUID UUID, rewardDate int, rebirthLevel int, out var statusCode string) {
+        InitPlayer(playerUID)
+
+        var giftId int = DailyRewardsConfigs.GetGiftByUserAndRebirthLevelInDay(_UserType[playerUID], rebirthLevel, rewardDate)
+
+        if giftId <= 0 {
+            statusCode = DailyRewardsDefinitions.STATUS_REWARD_INVALID
+            return
+        }
+
+        MailsManager.CheckConditionReceiveMail(
+            Map<string, object>{
+                MailsDefinitions.PAYLOAD_PLAYER_UID: playerUID,
+                MailsDefinitions.PAYLOAD_IS_CONFIG_MAIL: true,
+                MailsDefinitions.PAYLOAD_MAIL_ID: giftId,
+            },
+            out var mailStatusCode,
+        )
+
+        if mailStatusCode != StatusCodes.STATUS_NO_ERROR {
+            statusCode = mailStatusCode
+            return
+        }
+
+        if !List.Contain(_CanClaimDates[playerUID], rewardDate) {
+            statusCode = DailyRewardsDefinitions.STATUS_REWARD_NOT_AVAILABLE
+            return
+        }
+
+        if List.Contain(_ClaimedDates[playerUID], rewardDate) {
+            statusCode = DailyRewardsDefinitions.STATUS_REWARD_ALREADY_CLAIMED
+            return
+        }
+
+        statusCode = DailyRewardsDefinitions.STATUS_NO_ERROR
+    }
+
+    func ProcessClaimDailyReward(playerUID UUID, rewardDate int, rebirthLevel int, out var statusCode string) {
+        var giftId int = DailyRewardsConfigs.GetGiftByUserAndRebirthLevelInDay(_UserType[playerUID], rebirthLevel, rewardDate)
+
+        MailsManager.RequestReceiveMail(
+            Map<string, object>{
+                MailsDefinitions.PAYLOAD_IS_CONFIG_MAIL: true,
+                MailsDefinitions.PAYLOAD_PLAYER_UID: playerUID,
+                MailsDefinitions.PAYLOAD_MAIL_ID: giftId,
+            },
+            out var processMailStatusCode,
+        )
+
+        statusCode = processMailStatusCode
+
+        if statusCode != StatusCodes.STATUS_NO_ERROR {
+            return
+        }
+
+        List.Remove(_CanClaimDates[playerUID], rewardDate)
+        List.Append(_ClaimedDates[playerUID], rewardDate)
+    }
+}

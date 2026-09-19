@@ -1,0 +1,103 @@
+import "Map.fcc" as Map
+import "List.fcc" as List
+import "CSVData.fcc" as CSVData
+import "StdLibrary.fcc" as StdLib
+import "EditorGenLib.fcc" as EditorLib
+
+import "../Consts/DailyRewardsDefinitions.fcg" as DailyRewardsDefinitions
+
+static graph DailyRewardsConfigs {
+    _RewardId2Day Map<int, int>
+    _RewardId2UserType Map<int, string>
+    _RewardId2RebirthLevel Map<int, int>
+    _RewardId2Gift Map<int, int>
+    _UserType2RebirthLevel2Day2Gift Map<string, Map<int, Map<int, int>>>
+    _UserType2RebirthLevelMilestones Map<string, List<int>>
+
+    event OnAwake() {
+        _RewardId2Day = Map<int, int>{}
+        _RewardId2UserType = Map<int, string>{}
+        _RewardId2RebirthLevel = Map<int, int>{}
+        _RewardId2Gift = Map<int, int>{}
+        _UserType2RebirthLevel2Day2Gift = Map<string, Map<int, Map<int, int>>>{}
+        _UserType2RebirthLevelMilestones = Map<string, List<int>>{}
+        GetDailyRewardsConfigsFromCSV()
+    }
+
+    func GetDailyRewardsConfigsFromCSV() {
+        var rewardConfigs List<List<object>> = CSVData.ReadCSV(EResCSV.DailyRewards)
+        for i = 2, List.Length(rewardConfigs), 1 {
+            var rewardInfo List<object> = rewardConfigs[i]
+            var rewardId int = rewardInfo[DailyRewardsDefinitions.CSV_DAILY_REWARD_ID] as int
+
+            _RewardId2Day[rewardId] = rewardInfo[DailyRewardsDefinitions.CSV_DAILY_REWARD_DAY] as int
+            _RewardId2UserType[rewardId] = rewardInfo[DailyRewardsDefinitions.CSV_DAILY_REWARD_USER_TYPE] as string
+            _RewardId2RebirthLevel[rewardId] = rewardInfo[DailyRewardsDefinitions.CSV_DAILY_REWARD_REBIRTH_LEVEL] as int
+            _RewardId2Gift[rewardId] = rewardInfo[DailyRewardsDefinitions.CSV_DAILY_REWARD_GIFT] as int
+        }
+    }
+
+    func GetRewardDay(rewardId int) int {
+        return _RewardId2Day[rewardId]
+    }
+
+    func GetRewardUserType(rewardId int) string {
+        return _RewardId2UserType[rewardId]
+    }
+
+    func GetRewardRebirthLevel(rewardId int) int {
+        return _RewardId2RebirthLevel[rewardId]
+    }
+
+    func GetRewardGift(rewardId int) int {
+        return _RewardId2Gift[rewardId]
+    }
+
+    func InitUserType2RebirthLevel2Day2Rewards(userType string) {
+        if Map.ContainKey(_UserType2RebirthLevel2Day2Gift, userType) {
+            return
+        }
+
+        _UserType2RebirthLevelMilestones[userType] = List<int>{}
+        _UserType2RebirthLevel2Day2Gift[userType] = Map<int, Map<int, int>>{}
+
+        for date = 1, DailyRewardsDefinitions.MAX_LOGIN_REWARD_DAY + 1, 1 {
+            for rewardId, day in _RewardId2Day {
+                if date == day && GetRewardUserType(rewardId) == userType {
+                    var rebirthLevel int = GetRewardRebirthLevel(rewardId)
+                    if !List.Contain(_UserType2RebirthLevelMilestones[userType], rebirthLevel) {
+                        List.Append(_UserType2RebirthLevelMilestones[userType], rebirthLevel)
+                    }
+
+                    if !Map.ContainKey(_UserType2RebirthLevel2Day2Gift[userType], rebirthLevel) {
+                        _UserType2RebirthLevel2Day2Gift[userType][rebirthLevel] = Map<int, int>{}
+                    }
+
+                    _UserType2RebirthLevel2Day2Gift[userType][rebirthLevel][date] = GetRewardGift(rewardId)
+                }
+            }
+        }
+    }
+
+    func GetMatchRebirthLevel(userType string, rebirthLevel int) int {
+        InitUserType2RebirthLevel2Day2Rewards(userType)
+
+        var matchLevel int = 0
+        for _, level in _UserType2RebirthLevelMilestones[userType] {
+            if level <= rebirthLevel && level > matchLevel {
+                matchLevel = level
+            }
+        }
+        return matchLevel
+    }
+
+    func GetGiftByUserAndRebirthLevelInDay(userType string, rebirthLevel int, day int) int {
+        var matchLevel int = GetMatchRebirthLevel(userType, rebirthLevel)
+        if matchLevel <= 0 {
+            return 0
+        }
+
+        return _UserType2RebirthLevel2Day2Gift[userType][matchLevel][day]
+    }
+}
+

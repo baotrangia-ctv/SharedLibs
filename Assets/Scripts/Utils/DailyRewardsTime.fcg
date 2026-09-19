@@ -1,0 +1,35 @@
+import "Map.fcc" as Map
+import "StdLibrary.fcc" as StdLib
+import "EditorGenLib.fcc" as EditorLib
+
+static graph DailyRewardsTime {
+    // Preserved from the source TimeManager for deterministic day boundaries.
+    GMTREGION Map<string, int> = Map<string, int>{
+        "TW": 28800,
+        "SG": 28800,
+        "BD": 21600,
+        "IND": 19800,
+        "EUROPE": 7200,
+        "RU": 10800,
+        "NA": -14400,
+        "PK": 18000,
+        "VN": 25200,
+        "ID": 25200,
+        "ME": 25200,
+        "TH": 25200,
+        "BR": -10800,
+        "SAC": -10800,
+        "US": -18000,
+    }
+
+    SECONDS_PER_DAY int = 86400
+
+    func GetCurrentTimestamp() int {
+        return GetServerTimestamp()
+    }
+
+    func GetDayIndexGMT(timestamp int) int {
+        return (timestamp + GMTREGION[GetServerRegion()]) / SECONDS_PER_DAY
+    }
+}
+

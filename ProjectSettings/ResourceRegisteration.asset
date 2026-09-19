@@ -154,8 +154,7 @@
             },
             {
               "id": "nX4dp9nD",
-              "scriptName": "AlertMailIcon",
-              "_isNewInSession": true
+              "scriptName": "AlertMailIcon"
             }
           ]
         }
@@ -288,6 +287,18 @@
           },
           "scriptName": "Gifts",
           "children": []
+        },
+        {
+          "refer": {
+            "fileId": "umxlisep0im-mpxjymwo-ge4mpccujzk",
+            "filePath": "Assets\\CSV\\DailyRewards.csv",
+            "_tag": {
+              "type": "GFileRefer"
+            },
+            "fileType": "csv"
+          },
+          "scriptName": "DailyRewards",
+          "children": []
         }
       ]
     },
@@ -338,4 +349,4 @@
   },
   "children": []
 }
-//"{FE:{"v":"1.18.4494106","c":{"FF":5001},"s":100}
+//"{FE:{"v":"1.19.4646566","c":{"FF":5001},"s":100}

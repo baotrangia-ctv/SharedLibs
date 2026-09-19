@@ -65,6 +65,19 @@ static graph MailConfigs {
             _GiftId2Start[giftId] = giftInfo[MailsDefinitions.CSV_GIFTS_START as int] as int
             _GiftId2End[giftId] = giftInfo[MailsDefinitions.CSV_GIFTS_END as int] as int
             _GiftId2Rewards[giftId] = DataUtils.JsonStringToListKeyValueV2(giftInfo[MailsDefinitions.CSV_GIFTS_REWARDS as int] as string)
+
+            // Structured values use braces so the semicolon-delimited reward
+            // object parser can preserve composite values such as "44;1".
+            for _, reward in _GiftId2Rewards[giftId] {
+                var rewardValue string = reward[MailsDefinitions.DATA_MAIL_REWARD_VALUES] as string
+                if rewardValue != nil {
+                    var valueLength int = Strings.Length(rewardValue)
+                    if valueLength >= 2 && Strings.Sub(rewardValue, 0, 1) == "{" && Strings.Sub(rewardValue, valueLength - 1, 1) == "}" {
+                        reward[MailsDefinitions.DATA_MAIL_REWARD_VALUES] = Strings.Sub(rewardValue, 1, valueLength - 2)
+                    }
+                }
+            }
+
             _GiftId2Reuse[giftId] = giftInfo[MailsDefinitions.CSV_GIFTS_REUSE as int] as bool
         }
     }
@@ -134,6 +147,10 @@ static graph MailConfigs {
         var startTime int = GetGiftStartById(id)
         var endTime int = GetGiftEndById(id)
 
-        return timestamp >= startTime && timestamp <= endTime
+        if startTime < 0 && endTime < 0 {
+            return true
+        }
+
+        return (startTime < 0 || timestamp >= startTime) && (endTime < 0 || timestamp <= endTime)
     }
 }
