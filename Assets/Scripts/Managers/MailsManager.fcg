@@ -201,18 +201,9 @@ static graph MailsManager {
         var isConfigMail bool = payload[MailsDefinitions.PAYLOAD_IS_CONFIG_MAIL] as bool
         if isConfigMail {
             var giftId int = payload[MailsDefinitions.PAYLOAD_MAIL_ID] as int
-            if !MailConfigs.IsValidGiftId(giftId) {
-                statusCode = StatusCodes.STATUS_GIFT_CODE_INVALID
-                return
-            }
-
-            if HasUsedGiftcode(playerUID, giftId) && !MailConfigs.GetGiftReuseById(giftId) {
-                statusCode = StatusCodes.STATUS_GIFT_CODE_HAS_USE
-                return
-            }
-
-            if !MailConfigs.IsGiftWindowValid(giftId, GetServerTimestamp()) {
-                statusCode = StatusCodes.STATUS_GIFT_CODE_EXPIRED
+            CheckRedeemGiftCode(playerUID, giftId, out var giftCodeStatus)
+            if giftCodeStatus != StatusCodes.STATUS_NO_ERROR {
+                statusCode = giftCodeStatus
                 return
             }
         }
@@ -326,6 +317,14 @@ static graph MailsManager {
         return GetPlayerMailsCount(playerUID) >= MailsDefinitions.MAX_MAILS
     }
 
+    // ==========================
+    // Giftcodes
+    // ==========================
+
+    func GetPlayerUsedGiftcodes(playerUID UUID) List<int> {
+        return List.Clone(_PlayerUsedGiftIds[playerUID]) as List<int>
+    }
+
     func HasUsedGiftcode(playerUID UUID, giftId int) bool {
         return List.Contain(_PlayerUsedGiftIds[playerUID], giftId)
     }
@@ -340,6 +339,41 @@ static graph MailsManager {
         }
 
         List.Append(_PlayerUsedGiftIds[playerUID], giftId)
+    }
+
+    func IsValidStartTime(startTime int) bool {
+        if startTime < 0 {
+            return true
+        }
+
+        return GetServerTimestamp() >= startTime
+    }
+
+    func IsValidEndTime(endTime int) bool {
+        if endTime < 0 {
+            return true
+        }
+
+        return GetServerTimestamp() <= endTime
+    }
+
+    func CheckRedeemGiftCode(playerUID UUID, giftId int, out var statusCode string) {
+        if !MailConfigs.IsValidGiftId(giftId) {
+            statusCode = StatusCodes.STATUS_GIFT_CODE_INVALID
+            return
+        }
+
+        if !IsValidStartTime(MailConfigs.GetGiftStartById(giftId)) || !IsValidEndTime(MailConfigs.GetGiftEndById(giftId)) {
+            statusCode = StatusCodes.STATUS_GIFT_CODE_EXPIRED
+            return
+        }
+
+        if HasUsedGiftcode(playerUID, giftId) && !MailConfigs.GetGiftReuseById(giftId) {
+            statusCode = StatusCodes.STATUS_GIFT_CODE_HAS_USE
+            return
+        }
+
+        statusCode = StatusCodes.STATUS_NO_ERROR
     }
 
     func CombinePlayerMails(playerUID UUID, currentMails List<Map<string, object>>, pendingMails List<Map<string, object>>) {
